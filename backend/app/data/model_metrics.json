@@ -1,23 +1,23 @@
 {
   "model_type": "TF-IDF + Logistic Regression",
-  "accuracy": 0.95,
+  "accuracy": 0.9167,
   "precision": 1.0,
-  "recall": 0.9,
-  "f1_score": 0.9474,
+  "recall": 0.8333,
+  "f1_score": 0.9091,
   "confusion_matrix": [
     [
-      10,
+      12,
       0
     ],
     [
-      1,
-      9
+      2,
+      10
     ]
   ],
-  "train_samples": 60,
-  "test_samples": 20,
-  "total_dataset_samples": 80,
-  "trained_at": "2026-10-31T13:47:42.605564+00:00",
+  "train_samples": 72,
+  "test_samples": 24,
+  "total_dataset_samples": 96,
+  "trained_at": "2026-10-31T14:00:49.316426+00:00",
   "limitations": [
     "Trained on a curated reference dataset of 80 labeled security scenarios; variance may exist on novel out-of-distribution text.",
     "Short SMS messages containing exclusively novel slang, obfuscated leetspeak, or emojis may produce low TF-IDF feature overlap.",

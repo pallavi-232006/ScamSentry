@@ -398,5 +398,86 @@
     "text": "Congratulations on passing your AWS Certified Solutions Architect examination! Your digital badge and certificate are available on Credly.",
     "label": 0,
     "category": "benign_notification"
+  },
+  {
+    "text": "You received Rs 25,000 cash reward on PhonePe! Enter your 6-digit UPI PIN to claim money instantly into your bank account.",
+    "label": 1,
+    "category": "upi_fraud"
+  },
+  {
+    "text": "Dear SBI user, your YONO account is blocked today due to pending KYC update. Click http://sbi-kyc-pan-update.xyz to update PAN and Aadhaar immediately.",
+    "label": 1,
+    "category": "bank_impersonation"
+  },
+  {
+    "text": "CBI & Cyber Crime Cell: A courier package containing 250g MDMA narcotics in your name was intercepted at Mumbai airport. You are under Digital Arrest. Transfer Rs 2,50,000 immediately to RBI security escrow.",
+    "label": 1,
+    "category": "government_impersonation"
+  },
+  {
+    "text": "India Post Notice: Consignment #IN82019 failed delivery due to incorrect pin code. Pay Rs 25 redelivery fee at http://indiapost-parcel-redelivery.xyz to avoid return.",
+    "label": 1,
+    "category": "package_phishing"
+  },
+  {
+    "text": "Work From Home Internship at Tata Consultancy Services! Earn Rs 2,500 daily for data entry. Pay Rs 499 refundable equipment fee via UPI to start.",
+    "label": 1,
+    "category": "fake_job"
+  },
+  {
+    "text": "Dear customer, Rs 48,500 debited from your HDFC account. If not done by you, forward the 6-digit verification OTP received to cancel transfer immediately.",
+    "label": 1,
+    "category": "otp_harvesting"
+  },
+  {
+    "text": "PM Kisan Samman Nidhi: Your DBT subsidy of Rs 6,000 has been approved. Click to verify your Aadhaar and bank details at http://pmkisan-dbt-subsidy.top",
+    "label": 1,
+    "category": "government_impersonation"
+  },
+  {
+    "text": "Earn Rs 50,000 daily with VIP Telegram trading group! Guaranteed 100% win rate. Transfer Rs 5,000 to broker UPI id to get started.",
+    "label": 1,
+    "category": "investment_scam"
+  },
+  {
+    "text": "SBI Alert: Your A/C 9812 is debited by Rs 450.00 on 31-Oct-26 via UPI Ref 410291. Avail Bal: Rs 14,210.00. If not you, SMS BLOCK to 567676.",
+    "label": 0,
+    "category": "legitimate_bank_alert"
+  },
+  {
+    "text": "HDFC Bank: Rs 1,890.00 spent on your Credit Card ending 3012 at Swiggy on 31-Oct-26. Available limit: Rs 1,45,000.00.",
+    "label": 0,
+    "category": "legitimate_bank_alert"
+  },
+  {
+    "text": "Your order from Flipkart has been dispatched with delivery partner Ekart Logistics. Expected delivery by tomorrow evening.",
+    "label": 0,
+    "category": "benign_notification"
+  },
+  {
+    "text": "Your CoWIN registration OTP is 892011. Valid for 3 minutes. Do not share this OTP with anyone.",
+    "label": 0,
+    "category": "legitimate_otp"
+  },
+  {
+    "text": "Bhai, are you free this evening? Let's catch up for chai at the usual stall near tech park.",
+    "label": 0,
+    "category": "benign_conversation"
+  },
+  {
+    "text": "Reminder: Semester exam registration forms must be submitted to the university portal before 5 PM on Monday.",
+    "label": 0,
+    "category": "benign_notification"
+  },
+  {
+    "text": "Bescom Electricity Bill: Your monthly power bill for meter #8912 is Rs 1,240.00. Due date is 08-Nov-26. Pay via authorized Bescom portal.",
+    "label": 0,
+    "category": "benign_notification"
+  },
+  {
+    "text": "Team, please join the client sprint demo on Google Meet at 3:30 PM. Agenda link shared on Slack.",
+    "label": 0,
+    "category": "benign_business"
   }
 ]
+

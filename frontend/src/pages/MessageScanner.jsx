@@ -1,51 +1,59 @@
 import React, { useState } from 'react';
 import { 
   ShieldAlert, Sparkles, Send, RefreshCw, AlertTriangle, 
-  CheckCircle2, Info, ChevronRight, HelpCircle, BrainCircuit,
-  Flame, Lock, EyeOff, Scale, ShieldCheck
+  CheckCircle2, Info, ChevronRight, BrainCircuit,
+  Flame, Lock, Scale, Copy, Check
 } from 'lucide-react';
 import { api } from '../services/api';
 
-const SAMPLE_PRESETS = [
+const INDIAN_SCAM_PRESETS = [
   {
-    title: "Bank Account Urgency (Critical)",
+    title: "1. Fake UPI Collect Request",
+    tag: "UPI Fraud",
     type: "sms",
-    text: "URGENT from Chase Bank: Your debit card has been suspended due to 3 failed PIN attempts. To reactivate your account immediately, verify your identity and enter your OTP at https://chase-reactivate-login.xyz",
+    text: "PhonePe Reward: You have received a cash reward of Rs 25,000! Enter your secret UPI PIN to claim money instantly into your bank account or accept collect request.",
   },
   {
-    title: "WhatsApp 6-Digit Verification Code",
+    title: "2. Fake Bank KYC Suspension",
+    tag: "KYC / Bank Phish",
+    type: "sms",
+    text: "Dear SBI user, your YONO account is blocked today due to pending KYC update. Click http://sbi-kyc-pan-update.xyz to update PAN and Aadhaar immediately to avoid permanent deactivation.",
+  },
+  {
+    title: "3. Digital Arrest Threat",
+    tag: "Digital Arrest",
     type: "whatsapp",
-    text: "Hey! I accidentally sent my 6-digit WhatsApp code to your phone by mistake. Can you please forward it back to me quickly? I need it urgently!",
+    text: "CBI & Cyber Crime Cell Notice: A courier package containing 250g MDMA narcotics in your name was intercepted at Mumbai airport. You are under Digital Arrest. Transfer Rs 2,50,000 immediately to RBI security escrow to clear charges.",
   },
   {
-    title: "Government Tax Warrant (High Risk)",
+    title: "4. Fake Courier Delivery Fee",
+    tag: "India Post Phish",
     type: "sms",
-    text: "IRS FINAL NOTICE: An arrest warrant has been submitted to your local sheriff department for unpaid federal taxes. Call 1-800-482-0199 immediately to settle or face detention.",
+    text: "India Post Notice: Consignment #IN82019 failed delivery due to incorrect pin code. Pay Rs 25 redelivery charge at http://indiapost-parcel-redelivery.xyz to avoid return.",
   },
   {
-    title: "Fake Remote Job Offer",
-    type: "sms",
-    text: "Work From Home Opportunity: Amazon is hiring online product reviewers! Earn $500 daily working 1-2 hours on your phone. No experience needed. Contact HR manager on Telegram @remote_career_now.",
-  },
-  {
-    title: "Lottery / Prize Claim (High Risk)",
-    type: "email",
-    text: "Congratulations! You have been selected as the grand winner of the 2026 International Crypto Sweepstakes for $250,000. Send your bank account routing number and social security number to claim immediately.",
-  },
-  {
-    title: "Crypto Investment Doubling",
+    title: "5. Fraudulent Internship Offer",
+    tag: "Fake Job / Task",
     type: "whatsapp",
-    text: "Guaranteed 400% profit in 48 hours with automated crypto AI arbitrage bot! Deposit minimum $500 Bitcoin. Risk-free passive income. Contact our certified broker on WhatsApp.",
+    text: "Work From Home Internship at Tata Consultancy Services! Earn Rs 2,500 daily for data entry. Pay Rs 499 refundable equipment fee via UPI to start. Contact HR manager on Telegram @remote_career_now.",
   },
   {
-    title: "Benign Bank Alert (Low Risk)",
+    title: "6. OTP Harvesting Message",
+    tag: "OTP Theft",
     type: "sms",
-    text: "Chase Bank: Your debit card ending in 4102 was charged $14.20 at Starbucks on 10/31. If this was you, no response is needed. Reply NO if you do not recognize this purchase.",
+    text: "Dear customer, Rs 48,500 debited from your HDFC account. If not done by you, forward the 6-digit verification OTP code received to cancel transfer immediately.",
   },
   {
-    title: "Benign Work Email (Low Risk)",
-    type: "email",
-    text: "Hi team, please find the updated project timeline for the Q4 sprint attached. Let's discuss any blockers during our standup at 10 AM tomorrow.",
+    title: "7. Fake Government Subsidy",
+    tag: "PM Subsidy Fraud",
+    type: "sms",
+    text: "PM Kisan Samman Nidhi: Your DBT subsidy of Rs 6,000 has been approved. Click to verify your Aadhaar and bank details at http://pmkisan-dbt-subsidy.top",
+  },
+  {
+    title: "8. Legitimate Bank Notification",
+    tag: "Legitimate (Safe)",
+    type: "sms",
+    text: "SBI Alert: Your A/C 9812 is debited by Rs 450.00 on 31-Oct-26 via UPI Ref 410291. Avail Bal: Rs 14,210.00. If not you, SMS BLOCK to 567676.",
   },
 ];
 
@@ -55,10 +63,14 @@ export default function MessageScanner({ onScanComplete }) {
   const [isScanning, setIsScanning] = useState(false);
   const [scanResult, setScanResult] = useState(null);
   const [error, setError] = useState(null);
+  const [copied, setCopied] = useState(false);
 
   const handleScan = async (e) => {
     e?.preventDefault();
-    if (!message.trim()) return;
+    if (!message.trim()) {
+      setError("Please paste or type message content before scanning.");
+      return;
+    }
 
     setIsScanning(true);
     setError(null);
@@ -68,7 +80,7 @@ export default function MessageScanner({ onScanComplete }) {
       setScanResult(result);
       if (onScanComplete) onScanComplete(result);
     } catch (err) {
-      setError(err.message || 'Failed to scan message');
+      setError(err.message || 'Failed to analyze message. Ensure backend is running.');
     } finally {
       setIsScanning(false);
     }
@@ -81,32 +93,60 @@ export default function MessageScanner({ onScanComplete }) {
     setError(null);
   };
 
+  const handleCopyReport = () => {
+    if (!scanResult) return;
+    const reportText = `[ScamSentry Threat Report]
+Target: ${scanResult.target_summary}
+Risk Score: ${scanResult.risk_score}/100 (${scanResult.threat_level})
+Classification: ${scanResult.classification || 'SUSPICIOUS'}
+Category: ${scanResult.category}
+Explanations: ${scanResult.explanations?.join(' ')}
+Recommendations: ${scanResult.recommendations?.join(' ')}`;
+
+    navigator.clipboard.writeText(reportText).then(() => {
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    });
+  };
+
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 animate-in fade-in duration-300">
       {/* Header */}
       <div>
         <h1 className="text-2xl font-bold text-white flex items-center gap-2">
           <ShieldAlert className="w-6 h-6 text-blue-400" />
-          Message Threat Scanner & Intelligence Engine
+          Advanced Message Scanner & Intelligence Engine
         </h1>
         <p className="text-sm text-slate-400 mt-1">
-          Multi-vector cybersecurity analysis: OTP harvesting, bank impersonation, social engineering tactics, offline URL inspection, and local ML classification.
+          Deep contextual analysis for Indian & global cyber threats: UPI collect frauds, bank KYC blocking, digital arrests, OTP theft, and malicious links.
         </p>
       </div>
 
       {/* Preset selector pills */}
-      <div className="space-y-2">
-        <span className="text-xs font-semibold uppercase tracking-wider text-slate-400 flex items-center gap-1.5">
-          <Sparkles className="w-3.5 h-3.5 text-blue-400" /> Curated Test Cases & Threat Scenarios:
-        </span>
-        <div className="flex flex-wrap gap-2">
-          {SAMPLE_PRESETS.map((preset, idx) => (
+      <div className="space-y-2.5">
+        <div className="flex items-center justify-between">
+          <span className="text-xs font-semibold uppercase tracking-wider text-slate-400 flex items-center gap-1.5">
+            <Sparkles className="w-3.5 h-3.5 text-blue-400" /> Indian Cyber Threat Presets (Click to Test Real Backend):
+          </span>
+          <span className="text-[11px] text-slate-500 font-mono">8 Verified Scenarios</span>
+        </div>
+
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2.5">
+          {INDIAN_SCAM_PRESETS.map((preset, idx) => (
             <button
               key={idx}
               onClick={() => loadPreset(preset)}
-              className="text-xs px-3 py-1.5 rounded-lg bg-navy-900 border border-slate-800 text-slate-300 hover:text-white hover:border-blue-500/50 hover:bg-slate-800/60 transition-all text-left"
+              className="text-left p-3 rounded-xl bg-navy-900 border border-slate-800 text-slate-300 hover:text-white hover:border-blue-500/50 hover:bg-slate-800/60 transition-all flex flex-col justify-between group shadow-sm"
             >
-              {preset.title}
+              <div className="font-medium text-xs text-slate-200 group-hover:text-blue-300 transition-colors">
+                {preset.title}
+              </div>
+              <div className="mt-2 flex items-center justify-between text-[10px] text-slate-500 font-mono">
+                <span className="px-1.5 py-0.5 rounded bg-slate-950 border border-slate-800 text-slate-400">
+                  {preset.tag}
+                </span>
+                <span className="uppercase">{preset.type}</span>
+              </div>
             </button>
           ))}
         </div>
@@ -117,10 +157,10 @@ export default function MessageScanner({ onScanComplete }) {
         <form onSubmit={handleScan} className="space-y-4">
           <div className="flex items-center justify-between">
             <label className="text-xs font-semibold uppercase tracking-wider text-slate-300">
-              Message Content (SMS, WhatsApp, Email)
+              Paste SMS, WhatsApp, or Email Text
             </label>
             <div className="flex items-center gap-2">
-              <span className="text-xs text-slate-400">Source:</span>
+              <span className="text-xs text-slate-400">Vector:</span>
               <select
                 value={sourceType}
                 onChange={(e) => setSourceType(e.target.value)}
@@ -138,11 +178,11 @@ export default function MessageScanner({ onScanComplete }) {
             rows={5}
             value={message}
             onChange={(e) => setMessage(e.target.value)}
-            placeholder="Paste raw SMS message, WhatsApp chat, or email content here to evaluate..."
-            className="w-full bg-slate-950/90 border border-slate-800 rounded-xl p-4 text-sm text-slate-100 placeholder:text-slate-600 focus:outline-none focus:border-blue-500/80 focus:ring-1 focus:ring-blue-500/40 transition-all font-sans"
+            placeholder="Paste raw SMS message, WhatsApp text, or suspicious email content here..."
+            className="w-full bg-slate-950/90 border border-slate-800 rounded-xl p-4 text-sm text-slate-100 placeholder:text-slate-600 focus:outline-none focus:border-blue-500/80 focus:ring-1 focus:ring-blue-500/40 transition-all font-sans leading-relaxed"
           />
 
-          <div className="flex items-center justify-between pt-2">
+          <div className="flex items-center justify-between pt-1">
             <span className="text-xs text-slate-500 font-mono">
               {message.length} characters
             </span>
@@ -150,8 +190,8 @@ export default function MessageScanner({ onScanComplete }) {
               {message && (
                 <button
                   type="button"
-                  onClick={() => { setMessage(''); setScanResult(null); }}
-                  className="text-xs text-slate-400 hover:text-slate-200 px-3 py-1.5"
+                  onClick={() => { setMessage(''); setScanResult(null); setError(null); }}
+                  className="text-xs text-slate-400 hover:text-slate-200 px-3 py-1.5 rounded hover:bg-slate-800 transition-colors"
                 >
                   Clear
                 </button>
@@ -159,7 +199,7 @@ export default function MessageScanner({ onScanComplete }) {
               <button
                 type="submit"
                 disabled={isScanning || !message.trim()}
-                className="px-5 py-2.5 rounded-lg bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white font-medium text-sm transition-all shadow-glow-blue disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+                className="px-5 py-2.5 rounded-lg bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white font-medium text-xs sm:text-sm transition-all shadow-glow-blue disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
               >
                 {isScanning ? (
                   <>
@@ -198,7 +238,7 @@ export default function MessageScanner({ onScanComplete }) {
                     Threat Assessment Report #{scanResult.id}
                   </span>
                   <span className={`px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider ${
-                    scanResult.classification === 'CONFIRMED_THREAT' ? 'bg-rose-500/20 text-rose-300 border border-rose-500/40' :
+                    scanResult.classification === 'CONFIRMED_THREAT' ? 'bg-rose-500/20 text-rose-300 border border-rose-500/40 shadow-glow-rose' :
                     scanResult.classification === 'SUSPICIOUS' ? 'bg-amber-500/20 text-amber-300 border border-amber-500/40' :
                     'bg-emerald-500/20 text-emerald-300 border border-emerald-500/40'
                   }`}>
@@ -213,12 +253,26 @@ export default function MessageScanner({ onScanComplete }) {
                     <Scale className="w-3.5 h-3.5 text-blue-400" />
                     Confidence: <span className="text-slate-200 font-semibold">{scanResult.metadata.confidence_label}</span> 
                     ({Math.round((scanResult.metadata.confidence_score || 0.8) * 100)}%)
+                    {scanResult.metadata?.uncertainty_notes && (
+                      <span className="hidden md:inline text-slate-500 text-[11px] ml-2">
+                        — {scanResult.metadata.uncertainty_notes}
+                      </span>
+                    )}
                   </p>
                 )}
               </div>
 
-              {/* Threat Score Gauge */}
+              {/* Threat Score & Actions */}
               <div className="flex items-center gap-4">
+                <button
+                  onClick={handleCopyReport}
+                  className="p-2 rounded-lg bg-slate-800/80 hover:bg-slate-700/80 border border-slate-700 text-slate-300 transition-colors flex items-center gap-1.5 text-xs"
+                  title="Copy formatted security summary"
+                >
+                  {copied ? <Check className="w-4 h-4 text-emerald-400" /> : <Copy className="w-4 h-4" />}
+                  <span className="hidden sm:inline">{copied ? "Copied" : "Copy Report"}</span>
+                </button>
+
                 <div className="text-right">
                   <div className="text-xs text-slate-400 uppercase font-semibold">Risk Score</div>
                   <div className={`text-3xl font-black font-mono ${
@@ -311,19 +365,19 @@ export default function MessageScanner({ onScanComplete }) {
                   <div className="p-2.5 rounded-lg bg-slate-950/60 border border-slate-800">
                     <span className="text-[10px] uppercase font-mono text-slate-500 block">Recall</span>
                     <span className="text-slate-200 font-mono font-semibold">
-                      {Math.round((scanResult.ml_analysis.model_metrics?.recall || 0.9) * 100)}%
+                      {Math.round((scanResult.ml_analysis.model_metrics?.recall || 0.83) * 100)}%
                     </span>
                   </div>
                   <div className="p-2.5 rounded-lg bg-slate-950/60 border border-slate-800">
                     <span className="text-[10px] uppercase font-mono text-slate-500 block">F1-Score</span>
                     <span className="text-slate-200 font-mono font-semibold">
-                      {scanResult.ml_analysis.model_metrics?.f1_score || 0.947}
+                      {scanResult.ml_analysis.model_metrics?.f1_score || 0.909}
                     </span>
                   </div>
                   <div className="p-2.5 rounded-lg bg-slate-950/60 border border-slate-800">
                     <span className="text-[10px] uppercase font-mono text-slate-500 block">Holdout Accuracy</span>
                     <span className="text-slate-200 font-mono font-semibold">
-                      {Math.round((scanResult.ml_analysis.model_metrics?.test_accuracy || 0.95) * 100)}%
+                      {Math.round((scanResult.ml_analysis.model_metrics?.test_accuracy || 0.917) * 100)}%
                     </span>
                   </div>
                 </div>

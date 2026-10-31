@@ -9,6 +9,7 @@ import ScanHistory from './pages/ScanHistory';
 export default function App() {
   const [currentView, setCurrentView] = useState('dashboard');
   const [selectedScanId, setSelectedScanId] = useState(null);
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
   const handleSelectScan = (id) => {
     setSelectedScanId(id);
@@ -20,17 +21,22 @@ export default function App() {
       {/* Navigation Sidebar */}
       <Sidebar
         currentView={currentView}
+        isOpen={mobileMenuOpen}
+        onClose={() => setMobileMenuOpen(false)}
         onSelectView={(view) => {
           setSelectedScanId(null);
           setCurrentView(view);
+          setMobileMenuOpen(false);
         }}
       />
 
       {/* Main Content Area */}
       <div className="flex-1 flex flex-col min-w-0 overflow-hidden">
-        <Navbar />
+        <Navbar 
+          onToggleMobileMenu={() => setMobileMenuOpen(!mobileMenuOpen)} 
+        />
 
-        <main className="flex-1 overflow-y-auto p-6 md:p-8">
+        <main className="flex-1 overflow-y-auto p-4 sm:p-6 md:p-8">
           <div className="max-w-6xl mx-auto">
             {currentView === 'dashboard' && (
               <Dashboard
@@ -56,4 +62,3 @@ export default function App() {
     </div>
   );
 }
-

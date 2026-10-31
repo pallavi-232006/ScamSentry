@@ -1,7 +1,7 @@
-from typing import List
-from fastapi import APIRouter, Depends, HTTPException, status
+from typing import List, Optional
+from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy.orm import Session
-from sqlalchemy import desc
+from sqlalchemy import desc, or_
 
 from app.database import get_db
 from app.models.scan_record import ScanRecord
@@ -11,9 +11,33 @@ router = APIRouter(prefix="/history", tags=["Scan History"])
 
 
 @router.get("/", response_model=List[ScanRecordSummary])
-def get_scan_history(limit: int = 50, db: Session = Depends(get_db)):
-    """Retrieve recent scan history ordered by timestamp descending."""
-    records = db.query(ScanRecord).order_by(desc(ScanRecord.created_at)).limit(limit).all()
+def get_scan_history(
+    limit: int = 50,
+    scan_type: Optional[str] = None,
+    threat_level: Optional[str] = None,
+    search: Optional[str] = None,
+    db: Session = Depends(get_db),
+):
+    """Retrieve filtered scan history ordered by timestamp descending."""
+    query = db.query(ScanRecord)
+
+    if isinstance(scan_type, str) and scan_type.lower() != "all":
+        query = query.filter(ScanRecord.scan_type == scan_type.lower())
+
+    if isinstance(threat_level, str) and threat_level.upper() != "ALL":
+        query = query.filter(ScanRecord.threat_level == threat_level.upper())
+
+    if isinstance(search, str) and search.strip():
+        term = f"%{search.strip()}%"
+        query = query.filter(
+            or_(
+                ScanRecord.target_summary.ilike(term),
+                ScanRecord.category.ilike(term),
+                ScanRecord.raw_content.ilike(term),
+            )
+        )
+
+    records = query.order_by(desc(ScanRecord.created_at)).limit(limit).all()
     return records
 
 
@@ -54,6 +78,15 @@ def get_scan_detail(scan_id: int, db: Session = Depends(get_db)):
         metadata={"raw_content": record.raw_content},
         created_at=record.created_at,
     )
+
+
+@router.delete("/clear-all", status_code=status.HTTP_200_OK)
+@router.delete("/", status_code=status.HTTP_200_OK)
+def clear_all_history(db: Session = Depends(get_db)):
+    """Clear all stored scan history records."""
+    deleted_count = db.query(ScanRecord).delete()
+    db.commit()
+    return {"status": "success", "deleted_count": deleted_count}
 
 
 @router.delete("/{scan_id}", status_code=status.HTTP_204_NO_CONTENT)

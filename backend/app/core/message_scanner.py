@@ -6,7 +6,7 @@ from app.core.url_scanner import UrlScanner
 
 # 1. OTP Harvesting Patterns
 OTP_HARVEST_PATTERNS = [
-    (r"\b(?:reply\s+with|forward|send|share|enter)\s+(?:your\s+)?(?:\d+[- ]digit\s+)?(?:otp|verification\s+code|sms\s+code|passcode|token)\b", "OTP Harvesting Request", 45.0, "Credential Theft", "Message explicitly solicits a one-time verification passcode, which legitimate identity systems instruct users never to share."),
+    (r"\b(?:reply\s+with|forward|send|share|enter)\s+(?:(?:your|the)\s+)?(?:[\w-]+\s+){0,3}(?:otp|verification\s+code|sms\s+code|passcode|token)\b", "OTP Harvesting Request", 45.0, "Credential Theft", "Message explicitly solicits a one-time verification passcode, which legitimate identity systems instruct users never to share."),
     (r"\b(?:whatsapp|google|uber|telegram)\s+(?:security\s+)?code\s+was\s+requested\b", "Unsolicited 2FA Request Baiting", 35.0, "Credential Theft", "Alerts about an unsolicited security code to induce the recipient into forwarding it."),
     (r"\b(?:accidentally|by\s+mistake)\s+sent\s+(?:my\s+)?(?:\d+[- ]digit\s+)?(?:code|otp)\b", "Accidental Code Forwarding Trick", 45.0, "Credential Theft", "Classic social engineering trick claiming a verification code was sent by mistake to steal the victim's account registration."),
 ]
@@ -32,8 +32,8 @@ GOVERNMENT_IMPERSONATION_PATTERNS = [
 
 # 5. Fake Job Offers
 FAKE_JOB_PATTERNS = [
-    (r"\b(?:work\s+from\s+home|remote\s+(?:assistant|job|product\s+reviewers?))\b.*?\b(?:\$\d+[\d,]*\s+(?:daily|per\s+day|an\s+hour)|earn\s+\$\d+)\b", "High-Yield Work-From-Home Scam", 38.0, "Employment Fraud", "Offers unrealistic compensation for minimal work with no formal interview process."),
-    (r"\b(?:equipment\s+registration\s+fee|paid\s+via\s+usdt|contact\s+(?:hr|recruiter)\s+on\s+telegram)\b", "Unorthodox Recruitment Funnel", 35.0, "Employment Fraud", "Directs job applicants to unverified chat apps (Telegram/WhatsApp) or demands advance equipment fees."),
+    (r"\b(?:work\s+from\s+home(?:\s+internship)?|internship\s+at|remote\s+(?:assistant|job|product\s+reviewers?|internship))\b.*?\b(?:(?:rs\.?|inr|\$)\s*\d+[\d,]*\s*(?:daily|per\s+day|an\s+hour)?|earn\s+(?:rs\.?|inr|\$)?\s*\d+)\b", "High-Yield Work-From-Home Scam", 38.0, "Employment Fraud", "Offers unrealistic compensation for minimal work with no formal interview process."),
+    (r"\b(?:equipment\s+registration\s+fee|paid\s+via\s+usdt|contact\s+(?:hr|recruiter)\s+on\s+telegram|refundable\s+equipment\s+fee)\b", "Unorthodox Recruitment Funnel", 35.0, "Employment Fraud", "Directs job applicants to unverified chat apps (Telegram/WhatsApp) or demands advance equipment fees."),
     (r"\b(?:earn\s+\$\d+\s+every\s+\d+\s+minutes\s+by\s+liking\s+youtube\s+videos)\b", "Task-Based Phishing Scam", 38.0, "Employment Fraud", "Promotes fraudulent task-based click-farming with promised instant payouts."),
 ]
 
@@ -78,6 +78,16 @@ INVESTMENT_SCAM_PATTERNS = [
     (r"\b(?:giving\s+away\s+\d+\s+ethereum|send\s+0\.\d+\s+eth\s+to\s+receive|deposit\s+minimum\s+\$\d+\s+bitcoin)\b", "Cryptocurrency Doubling Bait", 45.0, "Investment Scam", "Impersonates celebrities or projects with promises to double deposited cryptocurrency."),
 ]
 
+# 13. Indian Cybercrime & Social Engineering Scenarios (UPI, KYC, Digital Arrest, India Post)
+INDIAN_CYBER_PATTERNS = [
+    (r"\b(?:enter|share|type)\s+(?:your\s+)?(?:upi\s+pin|google\s*pay\s+pin|phonepe\s+pin|paytm\s+pin)\s+(?:to\s+(?:receive|claim|credit|accept)|for\s+receiving)\b", "Fraudulent UPI PIN Solicitation", 50.0, "UPI Fraud", "Fraudulent instruction demanding victim enter their secret UPI PIN to receive money. UPI PIN is only needed to SEND money, never to receive."),
+    (r"\b(?:upi\s+collect\s+request|accept\s+collect\s+request|scan\s+qr\s+code\s+to\s+receive\s+(?:money|cashback|payment))\b", "Deceptive UPI Collect / QR Bait", 45.0, "UPI Fraud", "Exploits UPI collect requests or deceptive QR codes to debit funds from the victim's account."),
+    (r"\b(?:sbi|hdfc|icici|axis\s+bank|pnb|bank\s+of\s+baroda|yono(?:\s+sbi)?)\b.*?\b(?:kyc\s+(?:update|pending|suspended|blocked|deactivated)|pan\s+card|aadhaar\s+card)\b", "Indian Banking KYC Suspension Scam", 48.0, "Bank Impersonation", "Phishing campaign impersonating Indian banks threatening account deactivation over fake KYC/PAN/Aadhaar deadlines."),
+    (r"\b(?:digital\s+arrest|cyber\s+crime\s+cell|cbi|narcotics\s+control\s+bureau|ncb|mumbai\s+police|enforcement\s+directorate)\b.*?\b(?:drugs|narcotics|illegal\s+parcel|fake\s+passport|video\s+call\s+investigation|clearance\s+account|arrest\s+warrant)\b", "Digital Arrest Cyber Extortion", 50.0, "Government Impersonation", "Digital Arrest extortion scheme where cybercriminals pose as CBI/Police claiming an illegal parcel was intercepted in your name."),
+    (r"\b(?:india\s+post|blue\s+dart|dtdc|delhivery)\b.*?\b(?:redelivery|address\s+update|unpaid\s+(?:fee|surcharge|charge)\s+of\s+rs\.?\s*\d+)\b", "Indian Postal & Courier Delivery Phishing", 38.0, "Package Phishing", "Impersonates India Post or domestic courier services demanding nominal re-delivery fees via spoofed portals."),
+    (r"\b(?:pm\s+kisan|pm\s+awas|beti\s+bachao|dbt\s+subsidy|modi\s+government\s+scheme)\b.*?\b(?:eligible|approved|claim\s+subsidy|link\s+bank\s+account|dbt\s+subsidy)\b", "Indian Government DBT Welfare Fraud", 42.0, "Government Impersonation", "Deceptively lures citizens with fabricated direct bank transfer (DBT) welfare schemes to harvest banking credentials."),
+]
+
 
 class MessageScanner:
     """
@@ -113,6 +123,7 @@ class MessageScanner:
         has_benign_bank_phrase = bool(
             re.search(r"\b(?:if\s+this\s+was\s+you,\s+no\s+(?:response|action)\s+is\s+needed|no\s+response\s+is\s+needed)\b", lower_text)
             or re.search(r"\b(?:your\s+direct\s+deposit\s+from\s+.*?has\s+been\s+credited)\b", lower_text)
+            or re.search(r"\b(?:debited\s+by\s+rs\.?\s*\d+.*?avail\s+bal.*?sms\s+block)\b", lower_text)
         )
         has_embedded_hyperlink = bool(re.search(r"https?://|www\.", lower_text))
         has_credential_request = bool(re.search(r"\b(?:password|pin|otp|login\s+at)\b", lower_text))
@@ -136,6 +147,7 @@ class MessageScanner:
             LINK_INVITATION_PATTERNS,
             CUSTOMER_SUPPORT_PATTERNS,
             INVESTMENT_SCAM_PATTERNS,
+            INDIAN_CYBER_PATTERNS,
         ]
 
         for group in pattern_groups:

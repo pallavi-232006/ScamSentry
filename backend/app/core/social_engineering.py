@@ -29,7 +29,7 @@ TACTIC_DEFINITIONS = [
             r"\b(permanently\s+(?:closed|suspended|disabled|deleted)|account\s+locked)\b",
             r"\b(power\s+service\s+will\s+be\s+disconnected|service\s+disconnected)\b",
             r"\b(malware\s+and\s+illegal\s+footage|webcam|video\s+evidence)\b",
-            r"\b(license\s+will\s+be\s+revoked)\b",
+            r"\b(license\s+will\s+be\s+revoked|digital\s+arrest|drugs\s+in\s+your\s+courier)\b",
         ],
         "explanation": "Uses punitive threats (arrest, lawsuit, extortion, account termination) to provoke severe anxiety and overpower critical judgment.",
     },
@@ -41,6 +41,7 @@ TACTIC_DEFINITIONS = [
         "patterns": [
             r"\b(internal\s+revenue(?:\s+service)?|irs|fbi|federal\s+reserve|homeland\s+security)\b",
             r"\b(social\s+security\s+administration|immigration\s+officer|state\s+police)\b",
+            r"\b(cbi|central\s+bureau\s+of\s+investigation|enforcement\s+directorate|cyber\s+crime\s+cell|narcotics\s+control\s+bureau|mumbai\s+police)\b",
             r"\b(fraud\s+prevention\s+department|security\s+(?:desk|team|department))\b",
             r"\b(head\s+of\s+security|it\s+administrator|system\s+administrator)\b",
             r"\b(customs\s+clearance|barrister|federal\s+agent)\b",

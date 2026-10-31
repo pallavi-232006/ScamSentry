@@ -26,8 +26,21 @@ export const api = {
     return handleResponse(res);
   },
 
-  async getHistory(limit = 50) {
-    const res = await fetch(`${API_BASE}/history/?limit=${limit}`);
+  async getHistory(params = {}) {
+    let url = `${API_BASE}/history/`;
+    // Backward compatibility if called with a single number limit
+    if (typeof params === 'number') {
+      url += `?limit=${params}`;
+    } else {
+      const query = new URLSearchParams();
+      if (params.limit) query.append('limit', params.limit);
+      if (params.scan_type && params.scan_type !== 'all') query.append('scan_type', params.scan_type);
+      if (params.threat_level && params.threat_level !== 'all') query.append('threat_level', params.threat_level);
+      if (params.search && params.search.trim()) query.append('search', params.search.trim());
+      const qs = query.toString();
+      if (qs) url += `?${qs}`;
+    }
+    const res = await fetch(url);
     return handleResponse(res);
   },
 
@@ -38,6 +51,13 @@ export const api = {
 
   async deleteScan(id) {
     const res = await fetch(`${API_BASE}/history/${id}`, {
+      method: 'DELETE',
+    });
+    return handleResponse(res);
+  },
+
+  async clearAllHistory() {
+    const res = await fetch(`${API_BASE}/history/clear-all`, {
       method: 'DELETE',
     });
     return handleResponse(res);
@@ -61,4 +81,3 @@ export const api = {
     return handleResponse(res);
   },
 };
-

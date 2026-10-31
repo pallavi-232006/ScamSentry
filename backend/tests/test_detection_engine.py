@@ -191,3 +191,4 @@ def test_explainable_threat_report_api_endpoint():
         assert len(res.limitations) > 0
     finally:
         db.close()
+
