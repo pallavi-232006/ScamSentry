@@ -1,13 +1,19 @@
 """
-Indian cybersecurity scenario tests — 8 new threat scenarios + false-positive tests.
+Indian cybersecurity scenario tests.
 All DB-writing functions receive the isolated in-memory `db` fixture from
 conftest.py — zero writes reach the production scamsentry.db file.
 
-Classification tiers (new):
-  CONFIRMED_MALICIOUS  – multi-vector, verified deception signals
-  LIKELY_SCAM          – strong multi-category convergence
-  SUSPICIOUS           – patterns present but not conclusive
-  LOW_RISK / BENIGN    – few/no indicators
+Classification tiers and their invariants:
+  CONFIRMED_MALICIOUS  – REQUIRES a URL structurally verified as deceptive (URL Deception
+                         indicator) AND a critical credential/impersonation indicator.
+                         Cannot be reached from heuristic pattern counts alone.
+  LIKELY_SCAM          – Strong pattern convergence across ≥2 categories; no URL needed.
+  SUSPICIOUS           – Indicators present but insufficient for confident assertion.
+  LOW_RISK / BENIGN    – Few or no indicators.
+
+Key invariant:
+  A message with zero embedded URLs must NEVER be classified CONFIRMED_MALICIOUS,
+  regardless of how many heuristic patterns fire or how high the score is.
 """
 import pytest
 from app.core.message_scanner import MessageScanner
@@ -17,266 +23,343 @@ from app.api.v1.scan import scan_message
 from app.api.v1.history import get_scan_history
 from app.api.v1.stats import get_dashboard_stats
 
-VALID_SCAM_CLASSES = {"CONFIRMED_MALICIOUS", "LIKELY_SCAM", "SUSPICIOUS"}
-VALID_SAFE_CLASSES = {"BENIGN", "LOW_RISK", "SUSPICIOUS"}
+# Convenience sets used in assertions
+SCAM_CLASSES = {"CONFIRMED_MALICIOUS", "LIKELY_SCAM", "SUSPICIOUS"}
+URL_REQUIRED_FOR_CONFIRMED = True   # documents the policy, referenced in comments
 
 
 # ===========================================================================
-# THREAT DETECTION TESTS (should trigger scam classification)
+# POLICY INVARIANT: CONFIRMED_MALICIOUS requires independent URL verification
 # ===========================================================================
 
-# 1. Fake PhonePe KYC Suspension (the original failing test case)
+def test_confirmed_malicious_requires_url_deception():
+    """
+    Core policy test.
+    A message with NO embedded URL — no matter how many critical heuristic patterns
+    fire or how high its risk score — must NOT be classified CONFIRMED_MALICIOUS.
+    The ceiling without an independent URL signal is LIKELY_SCAM.
+    """
+    # Highly suspicious message: PhonePe + KYC expiry + UPI PIN — but NO hyperlink
+    msg_no_url = (
+        "Your PhonePe account will be blocked today. "
+        "Your KYC verification has expired. "
+        "Enter your UPI PIN immediately to reactivate your account."
+    )
+    ind, _, _, url_a, _ = MessageScanner.scan(msg_no_url)
+    result = RiskEngine.evaluate(indicators=ind, ml_score=85.0, url_analyses=url_a)
+
+    url_indicators = [i for i in ind if i.category == "URL Deception"]
+    assert len(url_indicators) == 0, "No URL in message — URL Deception category must not fire"
+    assert result["classification"] != "CONFIRMED_MALICIOUS", (
+        "CONFIRMED_MALICIOUS must not be assigned when no URL deception signal is present. "
+        "Got: %s (score=%s)" % (result["classification"], result["risk_score"])
+    )
+    # Score may be HIGH/CRITICAL — that is correct; only the classification label is constrained
+    assert result["classification"] in {"LIKELY_SCAM", "SUSPICIOUS"}, (
+        "Without a URL, a high-scoring scam message should be LIKELY_SCAM or SUSPICIOUS. "
+        "Got: %s" % result["classification"]
+    )
+
+
+def test_confirmed_malicious_requires_critical_credential_indicator():
+    """
+    A deceptive URL alone (no credential/impersonation indicator) must not produce
+    CONFIRMED_MALICIOUS. Both signals are required simultaneously.
+    """
+    # URL that is structurally suspicious (shortener) but message text has no credential demand
+    msg_url_only = (
+        "Check out the latest news: https://bit.ly/breaking-news-today"
+    )
+    ind, _, _, url_a, _ = MessageScanner.scan(msg_url_only)
+    result = RiskEngine.evaluate(indicators=ind, ml_score=10.0, url_analyses=url_a)
+
+    # There is a URL deception signal (shortener) but no critical credential indicator
+    has_critical_cred = any(
+        i.category in {"Credential Theft", "Impersonation", "UPI Fraud",
+                       "Bank Impersonation", "Government Impersonation"}
+        and i.severity == "critical"
+        for i in ind
+    )
+    assert not has_critical_cred, "Pure-URL-shortener message should not fire a critical credential indicator"
+    assert result["classification"] != "CONFIRMED_MALICIOUS", (
+        "URL shortener alone without a critical credential indicator must not produce CONFIRMED_MALICIOUS"
+    )
+
+
+def test_confirmed_malicious_when_both_url_and_credential_present():
+    """
+    When BOTH signals are present — a structurally deceptive URL AND a critical
+    credential/impersonation indicator — and score >= 75, CONFIRMED_MALICIOUS is correct.
+    This is the only scenario where that label is permitted.
+    """
+    # SBI KYC phishing with a lookalike domain URL
+    msg = (
+        "Dear SBI user, your YONO account is blocked due to pending KYC update. "
+        "Click http://sbi-kyc-pan-update.xyz to update PAN and Aadhaar immediately."
+    )
+    ind, _, _, url_a, _ = MessageScanner.scan(msg)
+    result = RiskEngine.evaluate(indicators=ind, ml_score=90.0, url_analyses=url_a)
+
+    has_url_deception = any(i.category == "URL Deception" for i in ind)
+    has_critical_cred = any(
+        i.category in {"Credential Theft", "Impersonation", "UPI Fraud",
+                       "Bank Impersonation", "Government Impersonation"}
+        and i.severity == "critical"
+        for i in ind
+    )
+    assert has_url_deception, "Lookalike domain should produce URL Deception indicator"
+    assert has_critical_cred, "SBI KYC phishing should produce critical credential/impersonation indicator"
+    assert result["risk_score"] >= 75.0
+    assert result["classification"] == "CONFIRMED_MALICIOUS", (
+        "With both URL deception and critical credential indicator at score>=75, "
+        "CONFIRMED_MALICIOUS is the correct and required label. Got: %s" % result["classification"]
+    )
+
+
+# ===========================================================================
+# THREAT DETECTION TESTS (8 Indian scenarios)
+# ===========================================================================
+
+# 1. Fake PhonePe KYC Suspension — no embedded URL
 def test_fake_phonepe_kyc_suspension():
     """
-    Exact message from the user's test:
     'Your PhonePe account will be blocked today. Your KYC verification has expired.
      Click the link below and enter your UPI PIN to reactivate your account immediately.'
-    Expected: HIGH or CRITICAL risk, classification not BENIGN, UPI Fraud + KYC indicators fired.
+    No real URL in the text → ceiling is LIKELY_SCAM.
+    Expected: CRITICAL risk, LIKELY_SCAM, UPI Fraud + KYC indicators.
     """
     msg = (
         "Your PhonePe account will be blocked today. "
         "Your KYC verification has expired. "
         "Click the link below and enter your UPI PIN to reactivate your account immediately."
     )
-    indicators, se_tactics, phrases, url_analyses, metadata = MessageScanner.scan(msg)
-    eval_result = RiskEngine.evaluate(indicators=indicators, ml_score=63.6, url_analyses=url_analyses)
+    ind, _, _, url_a, meta = MessageScanner.scan(msg)
+    result = RiskEngine.evaluate(indicators=ind, ml_score=63.6, url_analyses=url_a)
 
-    # Must detect UPI Fraud and KYC threat independently
-    upi_categories = [ind.category for ind in indicators if ind.category == "UPI Fraud"]
-    kyc_indicators = [ind for ind in indicators if "KYC" in ind.name or "Account Blocking" in ind.name or "PhonePe" in ind.name]
+    upi = [i for i in ind if i.category == "UPI Fraud"]
+    kyc = [i for i in ind if "KYC" in i.name or "Account Blocking" in i.name or "PhonePe" in i.name]
 
-    assert len(upi_categories) > 0, "Expected at least one UPI Fraud indicator"
-    assert len(kyc_indicators) > 0, "Expected KYC expiry or account blocking indicator"
-    assert eval_result["risk_score"] >= 60.0, "Score should be HIGH or above for this classic scam"
-    assert eval_result["risk_level"] in ["HIGH", "CRITICAL"]
-    assert eval_result["classification"] != "BENIGN"
-    assert eval_result["classification"] != "LOW_RISK"
+    assert len(upi) > 0, "Must detect at least one UPI Fraud indicator"
+    assert len(kyc) > 0, "Must detect KYC expiry or PhonePe blocking indicator"
+    assert result["risk_score"] >= 60.0
+    assert result["risk_level"] in ["HIGH", "CRITICAL"]
+    # No URL in message → must NOT be CONFIRMED_MALICIOUS
+    assert result["classification"] != "CONFIRMED_MALICIOUS", (
+        "No embedded URL → CONFIRMED_MALICIOUS must not be assigned"
+    )
+    assert result["classification"] in {"LIKELY_SCAM", "SUSPICIOUS"}
 
 
-# 2. Fake Google Pay UPI PIN Request
+# 2. Fake Google Pay UPI PIN Request — has deceptive URL
 def test_fake_google_pay_upi_pin_request():
     """
-    Google Pay impersonation asking for UPI PIN via SMS.
-    Expected: UPI Fraud indicator, LIKELY_SCAM or CONFIRMED_MALICIOUS, score >= 65.
+    Google Pay impersonation with lookalike URL asking for UPI PIN.
+    URL present → CONFIRMED_MALICIOUS is reachable if all conditions met.
     """
     msg = (
         "Google Pay Alert: Your GPay account has been suspended due to incomplete KYC. "
         "Enter your Google Pay UPI PIN at http://gpay-kyc-verify.xyz/india to reactivate immediately."
     )
-    indicators, se_tactics, phrases, url_analyses, metadata = MessageScanner.scan(msg)
-    eval_result = RiskEngine.evaluate(indicators=indicators, ml_score=75.0, url_analyses=url_analyses)
+    ind, _, _, url_a, _ = MessageScanner.scan(msg)
+    result = RiskEngine.evaluate(indicators=ind, ml_score=75.0, url_analyses=url_a)
 
-    assert any(ind.category == "UPI Fraud" for ind in indicators), "Must detect UPI Fraud"
-    assert eval_result["risk_score"] >= 65.0
-    assert eval_result["classification"] in VALID_SCAM_CLASSES
+    assert any(i.category == "UPI Fraud" for i in ind), "Must detect UPI Fraud"
+    assert result["risk_score"] >= 65.0
+    assert result["classification"] in SCAM_CLASSES
 
 
-# 3. Fake Paytm Reward / Cashback Scam
+# 3. Fake Paytm Reward / Cashback — no URL
 def test_fake_paytm_reward():
     """
-    Paytm impersonation with fake cashback claiming victim must 'verify' to receive.
-    Expected: UPI Fraud (Paytm impersonation), score >= 45.
+    Paytm impersonation with fake cashback — no embedded URL.
+    Ceiling: LIKELY_SCAM.
     """
     msg = (
         "Paytm: Congratulations! Rs 2,500 cashback has been credited to your Paytm wallet. "
         "Your Paytm account is suspended — verify KYC immediately to claim your reward."
     )
-    indicators, se_tactics, phrases, url_analyses, metadata = MessageScanner.scan(msg)
-    eval_result = RiskEngine.evaluate(indicators=indicators, ml_score=65.0)
+    ind, _, _, url_a, _ = MessageScanner.scan(msg)
+    result = RiskEngine.evaluate(indicators=ind, ml_score=65.0)
 
-    assert any(ind.category == "UPI Fraud" for ind in indicators), "Must detect Paytm impersonation"
-    assert eval_result["risk_score"] >= 45.0
-    assert eval_result["classification"] in VALID_SCAM_CLASSES
+    assert any(i.category == "UPI Fraud" for i in ind), "Must detect Paytm impersonation"
+    assert result["risk_score"] >= 45.0
+    assert result["classification"] != "CONFIRMED_MALICIOUS", (
+        "No URL → must not be CONFIRMED_MALICIOUS"
+    )
+    assert result["classification"] in {"LIKELY_SCAM", "SUSPICIOUS"}
 
 
-# 4. Digital Arrest Scam
+# 4. Digital Arrest Scam — no URL
 def test_digital_arrest_scam():
     """
-    CBI digital arrest extortion — most dangerous Indian cyber scam variant.
-    Expected: Government Impersonation, Fear tactic, score >= 75, CONFIRMED_MALICIOUS or LIKELY_SCAM.
+    CBI digital arrest extortion — no embedded URL.
+    Score will be CRITICAL; classification ceiling is LIKELY_SCAM.
     """
     msg = (
         "CBI & Cyber Crime Cell Notice: A courier package containing 250g MDMA narcotics "
         "in your name was intercepted at Mumbai airport. You are under Digital Arrest. "
         "Transfer Rs 2,50,000 immediately to RBI security escrow to clear charges."
     )
-    indicators, se_tactics, phrases, url_analyses, metadata = MessageScanner.scan(msg)
-    eval_result = RiskEngine.evaluate(indicators=indicators, ml_score=90.0)
+    ind, se, _, url_a, _ = MessageScanner.scan(msg)
+    result = RiskEngine.evaluate(indicators=ind, ml_score=90.0)
 
-    assert any("Digital Arrest" in ind.name or ind.category == "Government Impersonation" for ind in indicators)
-    assert any(t.category in ["Fear", "Authority"] for t in se_tactics)
-    assert eval_result["risk_score"] >= 75.0
-    assert eval_result["classification"] in VALID_SCAM_CLASSES
+    assert any("Digital Arrest" in i.name or i.category == "Government Impersonation" for i in ind)
+    assert any(t.category in ["Fear", "Authority"] for t in se)
+    assert result["risk_score"] >= 75.0
+    # No URL → ceiling is LIKELY_SCAM
+    assert result["classification"] != "CONFIRMED_MALICIOUS", (
+        "No URL → CONFIRMED_MALICIOUS must not be assigned"
+    )
+    assert result["classification"] in {"LIKELY_SCAM", "SUSPICIOUS"}
 
 
-# 5. Fake Courier Delivery Fee
+# 5. Fake Courier Delivery Fee — has deceptive URL
 def test_fake_courier_delivery_fee():
     """
-    India Post phishing SMS with redelivery fee — micro-fee credential harvesting.
-    Expected: Package Phishing indicator, score >= 50.
+    India Post phishing with lookalike URL. URL present → CONFIRMED_MALICIOUS possible.
     """
     msg = (
         "India Post Notice: Consignment #IN82019 failed delivery due to incorrect pin code. "
         "Pay Rs 25 redelivery charge at http://indiapost-parcel-redelivery.xyz to avoid return."
     )
-    indicators, se_tactics, phrases, url_analyses, metadata = MessageScanner.scan(msg)
-    eval_result = RiskEngine.evaluate(indicators=indicators, ml_score=80.0, url_analyses=url_analyses)
+    ind, _, _, url_a, _ = MessageScanner.scan(msg)
+    result = RiskEngine.evaluate(indicators=ind, ml_score=80.0, url_analyses=url_a)
 
-    assert any("Courier" in ind.name or ind.category == "Package Phishing" for ind in indicators)
-    assert eval_result["risk_score"] >= 50.0
-    assert eval_result["classification"] in VALID_SCAM_CLASSES
+    assert any("Courier" in i.name or i.category == "Package Phishing" for i in ind)
+    assert result["risk_score"] >= 50.0
+    assert result["classification"] in SCAM_CLASSES
 
 
-# 6. Fake UPI Collect Request + QR Code
+# 6. Fake UPI Collect Request + QR Code — no URL
 def test_fake_upi_collect_request():
     """
-    UPI collect request scam — victim is told to 'accept' to receive money.
-    Expected: UPI Fraud detected (collect request), score >= 60.
+    Collect request / QR bait with no embedded URL.
+    Ceiling: LIKELY_SCAM.
     """
     msg = (
         "PhonePe Reward: You have received a cash reward of Rs 25,000! "
         "Accept the UPI collect request sent to your number to claim money instantly. "
         "Or scan the QR code to receive your cashback payment."
     )
-    indicators, se_tactics, phrases, url_analyses, metadata = MessageScanner.scan(msg)
-    eval_result = RiskEngine.evaluate(indicators=indicators, ml_score=85.0)
+    ind, _, _, url_a, _ = MessageScanner.scan(msg)
+    result = RiskEngine.evaluate(indicators=ind, ml_score=85.0)
 
-    assert any(ind.category == "UPI Fraud" for ind in indicators)
-    assert eval_result["risk_score"] >= 60.0
-    assert eval_result["classification"] in VALID_SCAM_CLASSES
+    assert any(i.category == "UPI Fraud" for i in ind)
+    assert result["risk_score"] >= 60.0
+    assert result["classification"] != "CONFIRMED_MALICIOUS", (
+        "No URL → must not be CONFIRMED_MALICIOUS"
+    )
+    assert result["classification"] in {"LIKELY_SCAM", "SUSPICIOUS"}
 
 
-# 7. Fake Bank KYC Suspension (SBI / HDFC)
-def test_fake_bank_kyc_suspension_indian():
+# 7. Fake Bank KYC + Lookalike URL — CONFIRMED_MALICIOUS expected
+def test_fake_bank_kyc_suspension_with_url():
     """
-    Indian bank KYC phishing — impersonates SBI with a lookalike URL.
-    Expected: Bank Impersonation, URL Deception, score >= 75, CONFIRMED_MALICIOUS.
+    SBI KYC phishing with a lookalike domain URL.
+    Both conditions for CONFIRMED_MALICIOUS are present.
     """
     msg = (
         "Dear SBI user, your YONO account is blocked today due to pending KYC update. "
         "Click http://sbi-kyc-pan-update.xyz to update PAN and Aadhaar immediately "
         "to avoid permanent deactivation."
     )
-    indicators, se_tactics, phrases, url_analyses, metadata = MessageScanner.scan(msg)
-    eval_result = RiskEngine.evaluate(indicators=indicators, ml_score=90.0, url_analyses=url_analyses)
+    ind, _, _, url_a, _ = MessageScanner.scan(msg)
+    result = RiskEngine.evaluate(indicators=ind, ml_score=90.0, url_analyses=url_a)
 
-    assert any(ind.category == "Bank Impersonation" for ind in indicators)
-    assert eval_result["risk_score"] >= 75.0
-    assert eval_result["risk_level"] == "CRITICAL"
-    assert eval_result["classification"] in VALID_SCAM_CLASSES
+    assert any(i.category == "Bank Impersonation" for i in ind)
+    assert result["risk_score"] >= 75.0
+    assert result["risk_level"] == "CRITICAL"
+    # URL present + critical impersonation indicator → CONFIRMED_MALICIOUS
+    assert result["classification"] == "CONFIRMED_MALICIOUS", (
+        "SBI KYC phishing with a lookalike URL satisfies all CONFIRMED_MALICIOUS conditions. "
+        "Got: %s" % result["classification"]
+    )
 
 
-# 8. Harmless Use of Urgency-Related Words (false-positive guard)
+# 8. Harmless Urgency Words — false-positive guard
 def test_harmless_urgency_words():
     """
-    Ordinary sentences containing 'urgent', 'immediately', 'blocked' in safe context.
-    Expected: LOW or MEDIUM risk, classification BENIGN or LOW_RISK or SUSPICIOUS with low score.
+    Ordinary sentences containing urgency-related words in benign context.
+    Must not push classification above SUSPICIOUS and score must be LOW/MEDIUM.
     """
-    # Meeting reminder with 'urgent'
-    msg1 = "Urgent meeting reminder: Quarterly review rescheduled to 4 PM in room 302. Please confirm attendance."
-    indicators1, _, _, _, meta1 = MessageScanner.scan(msg1)
-    eval1 = RiskEngine.evaluate(indicators=indicators1, ml_score=0.0)
-    assert eval1["risk_score"] < 30.0, "Benign urgency phrase should not push score above LOW"
-    assert eval1["risk_level"] in ["LOW", "MEDIUM"]
+    msg1 = "Urgent meeting reminder: Quarterly review rescheduled to 4 PM in room 302."
+    ind1, _, _, _, _ = MessageScanner.scan(msg1)
+    r1 = RiskEngine.evaluate(indicators=ind1, ml_score=0.0)
+    assert r1["risk_score"] < 30.0
+    assert r1["risk_level"] in ["LOW", "MEDIUM"]
+    assert r1["classification"] not in {"CONFIRMED_MALICIOUS", "LIKELY_SCAM"}
 
-    # Road blocked notice
-    msg2 = "Hi, the road near our office is blocked due to construction. Please take the alternate route via MG Road."
-    indicators2, _, _, _, meta2 = MessageScanner.scan(msg2)
-    eval2 = RiskEngine.evaluate(indicators=indicators2, ml_score=0.0)
-    assert eval2["risk_score"] < 25.0
-    assert eval2["risk_level"] == "LOW"
+    msg2 = "Hi, the road near our office is blocked due to construction. Please use the alternate route."
+    ind2, _, _, _, _ = MessageScanner.scan(msg2)
+    r2 = RiskEngine.evaluate(indicators=ind2, ml_score=0.0)
+    assert r2["risk_score"] < 25.0
+    assert r2["risk_level"] == "LOW"
 
 
 # ===========================================================================
-# FALSE POSITIVE TESTS (legitimate messages that must NOT be flagged as scams)
+# FALSE POSITIVE TESTS
 # ===========================================================================
 
-# 9. Genuine UPI Payment Notification
 def test_genuine_upi_payment_notification():
-    """
-    Real bank debit SMS — standard format used by all Indian banks.
-    Must NOT trigger UPI fraud or credential theft indicators.
-    Must be classified as BENIGN or very LOW_RISK.
-    """
+    """Real bank debit SMS must be classified BENIGN."""
     msg = (
         "SBI Alert: Your A/C xx9812 is debited by Rs 450.00 on 31-Oct via UPI "
-        "Ref 410291823. Avail Bal: Rs 14,210.00. If not you, SMS BLOCK to 567676."
+        "Ref 410291. Avail Bal: Rs 14,210.00. If not you, SMS BLOCK to 567676."
     )
-    indicators, se_tactics, phrases, url_analyses, metadata = MessageScanner.scan(msg)
-    eval_result = RiskEngine.evaluate(
-        indicators=indicators,
-        ml_score=0.0,
-        url_analyses=url_analyses,
-        is_benign_exempt=metadata.get("is_legitimate_bank_alert", False),
+    ind, _, _, url_a, meta = MessageScanner.scan(msg)
+    result = RiskEngine.evaluate(
+        indicators=ind, ml_score=0.0, url_analyses=url_a,
+        is_benign_exempt=meta.get("is_legitimate_bank_alert", False),
     )
+    assert result["risk_score"] < 25.0
+    assert result["risk_level"] == "LOW"
+    assert result["classification"] == "BENIGN"
 
-    assert eval_result["risk_score"] < 25.0, "Genuine UPI debit notification should be LOW risk"
-    assert eval_result["risk_level"] == "LOW"
-    assert eval_result["classification"] == "BENIGN"
 
-
-# 10. Legitimate Bank KYC Reminder (no link, no credential demand)
 def test_legitimate_kyc_reminder_no_link():
-    """
-    Some banks send legitimate KYC renewal reminders with NO suspicious link and
-    no credential request — only advising to visit branch or official app.
-    Must not be flagged as HIGH risk.
-    """
+    """Legitimate KYC reminder without URL or credential demand must not be HIGH risk."""
     msg = (
         "Dear HDFC Bank customer, your KYC documents are due for renewal by Dec 31. "
         "Please visit your nearest HDFC branch or log in to NetBanking to complete your KYC. "
         "For assistance, call our official helpline 1800-202-6161."
     )
-    indicators, se_tactics, phrases, url_analyses, metadata = MessageScanner.scan(msg)
-    eval_result = RiskEngine.evaluate(indicators=indicators, ml_score=0.0, url_analyses=url_analyses)
+    ind, _, _, url_a, _ = MessageScanner.scan(msg)
+    result = RiskEngine.evaluate(indicators=ind, ml_score=0.0, url_analyses=url_a)
+    assert result["risk_score"] < 55.0
+    assert result["risk_level"] in ["LOW", "MEDIUM"]
+    assert result["classification"] != "CONFIRMED_MALICIOUS"
 
-    # Should be low-medium risk at most — no PIN/OTP/link requested
-    assert eval_result["risk_score"] < 55.0, "Legitimate KYC reminder without link should not be HIGH risk"
-    assert eval_result["risk_level"] in ["LOW", "MEDIUM"]
 
-
-# 11. Genuine Google Pay Transaction Received Confirmation
 def test_genuine_gpay_received_notification():
-    """
-    Real Google Pay received-payment notification — must not trigger UPI fraud.
-    """
+    """Real Google Pay received-payment notification must not trigger UPI Fraud."""
     msg = (
         "You have received Rs 500.00 from Ravi Kumar (ravikumar@okicici) via Google Pay. "
         "Transaction ID: UPI/231031/123456. Check Google Pay app for details."
     )
-    indicators, se_tactics, phrases, url_analyses, metadata = MessageScanner.scan(msg)
-    eval_result = RiskEngine.evaluate(indicators=indicators, ml_score=0.0, url_analyses=url_analyses)
-
-    # No UPI PIN requested, no link, no threat — should not be CRITICAL or HIGH
-    upi_fraud_indicators = [ind for ind in indicators if ind.category == "UPI Fraud"]
-    # A pure received notification with a UPI ref should not fire UPI Fraud patterns
-    assert eval_result["risk_score"] < 50.0, "Genuine payment received notification should not be HIGH risk"
-    assert eval_result["risk_level"] in ["LOW", "MEDIUM"]
+    ind, _, _, url_a, _ = MessageScanner.scan(msg)
+    result = RiskEngine.evaluate(indicators=ind, ml_score=0.0, url_analyses=url_a)
+    assert result["risk_score"] < 50.0
+    assert result["risk_level"] in ["LOW", "MEDIUM"]
+    assert result["classification"] not in {"CONFIRMED_MALICIOUS"}
 
 
-# 12. Legitimate Internship Announcement (college notice board)
 def test_legitimate_internship_announcement():
-    """
-    Genuine internship announcement — named company, proper interview process, no fee.
-    Must not trigger Employment Fraud.
-    """
+    """Campus internship announcement with no Telegram / advance fee must not flag Employment Fraud."""
     msg = (
-        "Internship Opportunity at Infosys: Applications open for Summer 2025 Internship Program "
-        "in Bangalore. Duration: 2 months. Apply via campus placement portal by Nov 15. "
-        "No fees required. Stipend: Rs 15,000/month. Contact placement cell for details."
+        "Internship Opportunity at Infosys: Applications open for Summer 2025 in Bangalore. "
+        "Duration: 2 months. Apply via campus placement portal by Nov 15. "
+        "No fees required. Stipend: Rs 15,000/month."
     )
-    indicators, se_tactics, phrases, url_analyses, metadata = MessageScanner.scan(msg)
-    eval_result = RiskEngine.evaluate(indicators=indicators, ml_score=0.0)
-
-    # Should NOT trigger employment fraud — no Telegram, no advance fee, no vague promises
-    employment_fraud = [ind for ind in indicators if ind.category == "Employment Fraud"]
-    assert len(employment_fraud) == 0, "Legitimate campus internship should not trigger Employment Fraud"
-    assert eval_result["risk_score"] < 25.0
-    assert eval_result["risk_level"] == "LOW"
+    ind, _, _, url_a, _ = MessageScanner.scan(msg)
+    result = RiskEngine.evaluate(indicators=ind, ml_score=0.0)
+    employment_fraud = [i for i in ind if i.category == "Employment Fraud"]
+    assert len(employment_fraud) == 0, "Legitimate campus internship must not trigger Employment Fraud"
+    assert result["risk_score"] < 25.0
+    assert result["risk_level"] == "LOW"
 
 
 # ===========================================================================
-# DB ISOLATION VERIFICATION TEST
+# DB ISOLATION VERIFICATION
 # ===========================================================================
 
 def test_history_filtering_and_stats(db):
@@ -287,11 +370,11 @@ def test_history_filtering_and_stats(db):
     )
     res = scan_message(payload=req, db=db)
     assert res.id is not None
-    assert res.classification in VALID_SCAM_CLASSES | {"SUSPICIOUS"}
+    assert res.classification in SCAM_CLASSES | {"SUSPICIOUS"}
 
-    filtered_msg = get_scan_history(limit=10, scan_type="message", db=db)
-    assert len(filtered_msg) > 0
-    assert all(r.scan_type == "message" for r in filtered_msg)
+    filtered = get_scan_history(limit=10, scan_type="message", db=db)
+    assert len(filtered) > 0
+    assert all(r.scan_type == "message" for r in filtered)
 
     search_res = get_scan_history(limit=10, search="PhonePe", db=db)
     assert len(search_res) > 0

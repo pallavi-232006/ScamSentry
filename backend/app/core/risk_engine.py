@@ -31,19 +31,25 @@ class RiskEngine:
     @staticmethod
     def determine_threat_classification(score: float, indicators: List[ThreatIndicator]) -> str:
         """
-        Calibrated threat classification that avoids claiming certainty from
-        suspicious indicators alone.
+        Calibrated threat classification.
 
-        Tiers (in descending order of evidence strength):
-        - CONFIRMED_MALICIOUS: Score ≥ 75 AND at least two independent critical
-          indicators across different categories, OR a verified malicious URL
-          combined with a critical credential/impersonation indicator.
-        - LIKELY_SCAM: Score ≥ 50 with corroborating critical or high-severity
-          indicators from at least two distinct categories.
-        - SUSPICIOUS: Score ≥ 25 or any indicators detected, but insufficient
-          convergence to assert likely fraud.
-        - LOW_RISK: Score > 0 but below 25 with only low-weight indicators.
-        - BENIGN: No indicators and score of 0.
+        CONFIRMED_MALICIOUS is reserved exclusively for cases where an independently
+        verified structural signal (a URL flagged by structural analysis as deceptive —
+        IP-based host, lookalike domain, homoglyphs, or known shortener) corroborates
+        a critical credential-theft or impersonation indicator.  No amount of
+        heuristic-pattern matches alone is sufficient to reach this tier, because
+        heuristic rules detect *suspicious phrasing*, not independently verified fact.
+
+        Tiers:
+        - CONFIRMED_MALICIOUS : score ≥ 75  AND  a URL-Deception indicator is present
+                                AND  a critical credential/impersonation indicator is present.
+                                Both conditions are mandatory — one alone is insufficient.
+        - LIKELY_SCAM         : score ≥ 50  AND  critical or high-severity indicators from
+                                at least two distinct categories converge.
+        - SUSPICIOUS          : any indicators detected or score ≥ 25, but evidence is
+                                insufficient to assert likely fraud.
+        - LOW_RISK            : score > 0 but below 25, minor signals only.
+        - BENIGN              : score == 0 and no indicators.
         """
         if not indicators and score == 0.0:
             return "BENIGN"
@@ -51,42 +57,47 @@ class RiskEngine:
         num_critical = sum(1 for ind in indicators if ind.severity == "critical")
         distinct_categories = len(set(ind.category for ind in indicators))
 
-        has_credential_or_impersonation = any(
+        # Independent structural verification — URL analysis flags are the only
+        # evidence source in ScamSentry that is not purely pattern-based.
+        has_verified_url_deception = any(
+            ind.category == "URL Deception" and ind.score_impact >= 15.0
+            for ind in indicators
+        )
+
+        has_critical_credential_or_impersonation = any(
             ind.category in [
                 "Credential Theft", "Impersonation", "UPI Fraud",
                 "Bank Impersonation", "Government Impersonation",
             ]
-            and ind.score_impact >= 40
+            and ind.severity == "critical"
             for ind in indicators
         )
-        has_url_deception = any(
-            ind.category in ["URL Deception", "Link Bait"] for ind in indicators
-        )
 
-        # CONFIRMED_MALICIOUS: strong multi-vector convergence with verified deception signals
+        # CONFIRMED_MALICIOUS requires BOTH:
+        #   (a) a URL structurally identified as deceptive (independent signal), AND
+        #   (b) a critical credential/impersonation indicator (intent signal), AND
+        #   (c) score ≥ 75
+        # Without all three, the highest reachable label is LIKELY_SCAM.
         if (
             score >= 75.0
-            and num_critical >= 2
-            and distinct_categories >= 2
-        ) or (
-            score >= 75.0
-            and has_credential_or_impersonation
-            and has_url_deception
+            and has_verified_url_deception
+            and has_critical_credential_or_impersonation
         ):
             return "CONFIRMED_MALICIOUS"
 
-        # LIKELY_SCAM: significant score with meaningful multi-category evidence
+        # LIKELY_SCAM: strong multi-category pattern convergence but no independent
+        # structural verification source — strong suspicion, not confirmed fact.
         if score >= 50.0 and (
             (num_critical >= 1 and distinct_categories >= 2)
-            or (has_credential_or_impersonation and score >= 60.0)
+            or (has_critical_credential_or_impersonation and score >= 60.0)
         ):
             return "LIKELY_SCAM"
 
-        # SUSPICIOUS: meaningful indicators but not enough for confident assertion
+        # SUSPICIOUS: meaningful indicators present but evidence base is limited.
         if score >= 25.0 or len(indicators) > 0:
             return "SUSPICIOUS"
 
-        # LOW_RISK: some score but very few or minor signals
+        # LOW_RISK: very minor signals, score below 25.
         if score > 0.0:
             return "LOW_RISK"
 
@@ -285,10 +296,19 @@ class RiskEngine:
 
         # Classification meaning explanation
         classification_meaning = {
-            "CONFIRMED_MALICIOUS": "independently corroborated by multi-vector evidence (credential/impersonation indicators + deceptive URL structure)",
-            "LIKELY_SCAM": "multiple independent threat indicators converge across different attack categories",
-            "SUSPICIOUS": "patterns match known scam tactics but evidence is insufficient to assert confirmed fraud with certainty",
-            "LOW_RISK": "minor signals detected; may be noise or edge-case vocabulary",
+            "CONFIRMED_MALICIOUS": (
+                "structural URL analysis independently corroborated deceptive intent "
+                "(verified deceptive URL + critical credential/impersonation indicator)"
+            ),
+            "LIKELY_SCAM": (
+                "multiple independent threat categories converge strongly — "
+                "high-confidence suspicion, but no independently verified structural signal present"
+            ),
+            "SUSPICIOUS": (
+                "patterns match known scam tactics; insufficient evidence to assert confirmed fraud — "
+                "treat with caution and verify through official channels"
+            ),
+            "LOW_RISK": "minor signals detected; likely noise or edge-case vocabulary",
             "BENIGN": "no threat indicators detected",
         }.get(classification, "assessed based on detected indicators")
 
