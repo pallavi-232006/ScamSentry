@@ -238,8 +238,11 @@ Recommendations: ${scanResult.recommendations?.join(' ')}`;
                     Threat Assessment Report #{scanResult.id}
                   </span>
                   <span className={`px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider ${
+                    scanResult.classification === 'CONFIRMED_MALICIOUS' ? 'bg-rose-600/25 text-rose-300 border border-rose-500/50 shadow-glow-rose' :
                     scanResult.classification === 'CONFIRMED_THREAT' ? 'bg-rose-500/20 text-rose-300 border border-rose-500/40 shadow-glow-rose' :
+                    scanResult.classification === 'LIKELY_SCAM' ? 'bg-orange-500/20 text-orange-300 border border-orange-500/40' :
                     scanResult.classification === 'SUSPICIOUS' ? 'bg-amber-500/20 text-amber-300 border border-amber-500/40' :
+                    scanResult.classification === 'LOW_RISK' ? 'bg-yellow-500/15 text-yellow-300 border border-yellow-500/30' :
                     'bg-emerald-500/20 text-emerald-300 border border-emerald-500/40'
                   }`}>
                     {scanResult.classification || 'SUSPICIOUS'}
@@ -251,13 +254,9 @@ Recommendations: ${scanResult.recommendations?.join(' ')}`;
                 {scanResult.metadata?.confidence_label && (
                   <p className="text-xs text-slate-400 mt-1 flex items-center gap-1.5">
                     <Scale className="w-3.5 h-3.5 text-blue-400" />
-                    Confidence: <span className="text-slate-200 font-semibold">{scanResult.metadata.confidence_label}</span> 
-                    ({Math.round((scanResult.metadata.confidence_score || 0.8) * 100)}%)
-                    {scanResult.metadata?.uncertainty_notes && (
-                      <span className="hidden md:inline text-slate-500 text-[11px] ml-2">
-                        — {scanResult.metadata.uncertainty_notes}
-                      </span>
-                    )}
+                    Detection Confidence: <span className="text-slate-200 font-semibold">{scanResult.metadata.confidence_label}</span>
+                    {' '}({Math.round((scanResult.metadata.confidence_score || 0.8) * 100)}%)
+                    <span className="text-[10px] text-slate-600 ml-1">— heuristic+ML convergence score, not ML probability</span>
                   </p>
                 )}
               </div>
@@ -347,45 +346,61 @@ Recommendations: ${scanResult.recommendations?.join(' ')}`;
                   <div className="flex items-center gap-2">
                     <BrainCircuit className="w-4 h-4 text-indigo-400" />
                     <span className="text-xs font-bold uppercase tracking-wider text-indigo-300">
-                      Local Machine Learning Pipeline (TF-IDF + Logistic Regression)
+                      Local ML Pipeline (TF-IDF + Logistic Regression)
                     </span>
                   </div>
                   <span className="text-xs font-mono font-bold text-indigo-300">
-                    Probability: {scanResult.ml_analysis.scam_probability}%
+                    Scam Probability: {scanResult.ml_analysis.scam_probability}%
                   </span>
+                </div>
+
+                {/* Clarification banner */}
+                <div className="p-2.5 rounded-lg bg-indigo-950/40 border border-indigo-800/60 text-[11px] text-indigo-300/80 leading-relaxed">
+                  <span className="font-semibold text-indigo-200">ℹ ML Probability</span> is a statistical vocabulary-similarity score from a local model trained on {scanResult.ml_analysis.training_samples || 96} labelled messages — it is <span className="font-semibold">not</span> the same as overall detection confidence.
+                  The final risk score blends ML (30% weight) with rule-based heuristics (70% weight) only when both agree.
+                  {scanResult.metadata?.confidence_label && (
+                    <span className="block mt-1">
+                      <span className="font-semibold text-indigo-200">Overall Detection Confidence: </span>
+                      {scanResult.metadata.confidence_label} ({Math.round((scanResult.metadata.confidence_score || 0) * 100)}%) — {scanResult.metadata.uncertainty_notes}
+                    </span>
+                  )}
                 </div>
 
                 <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 text-xs">
                   <div className="p-2.5 rounded-lg bg-slate-950/60 border border-slate-800">
-                    <span className="text-[10px] uppercase font-mono text-slate-500 block">Precision</span>
+                    <span className="text-[10px] uppercase font-mono text-slate-500 block">Model Precision</span>
                     <span className="text-slate-200 font-mono font-semibold">
                       {Math.round((scanResult.ml_analysis.model_metrics?.precision || 1.0) * 100)}%
                     </span>
+                    <span className="text-[9px] text-slate-600 block">on holdout set</span>
                   </div>
                   <div className="p-2.5 rounded-lg bg-slate-950/60 border border-slate-800">
-                    <span className="text-[10px] uppercase font-mono text-slate-500 block">Recall</span>
+                    <span className="text-[10px] uppercase font-mono text-slate-500 block">Model Recall</span>
                     <span className="text-slate-200 font-mono font-semibold">
                       {Math.round((scanResult.ml_analysis.model_metrics?.recall || 0.83) * 100)}%
                     </span>
+                    <span className="text-[9px] text-slate-600 block">on holdout set</span>
                   </div>
                   <div className="p-2.5 rounded-lg bg-slate-950/60 border border-slate-800">
                     <span className="text-[10px] uppercase font-mono text-slate-500 block">F1-Score</span>
                     <span className="text-slate-200 font-mono font-semibold">
                       {scanResult.ml_analysis.model_metrics?.f1_score || 0.909}
                     </span>
+                    <span className="text-[9px] text-slate-600 block">harmonic mean</span>
                   </div>
                   <div className="p-2.5 rounded-lg bg-slate-950/60 border border-slate-800">
-                    <span className="text-[10px] uppercase font-mono text-slate-500 block">Holdout Accuracy</span>
+                    <span className="text-[10px] uppercase font-mono text-slate-500 block">Holdout Acc.</span>
                     <span className="text-slate-200 font-mono font-semibold">
                       {Math.round((scanResult.ml_analysis.model_metrics?.test_accuracy || 0.917) * 100)}%
                     </span>
+                    <span className="text-[9px] text-slate-600 block">stratified split</span>
                   </div>
                 </div>
 
                 {scanResult.ml_analysis.top_contributing_ngrams && scanResult.ml_analysis.top_contributing_ngrams.length > 0 && (
                   <div className="pt-1">
                     <span className="text-[11px] text-slate-400 font-medium block mb-1">
-                      Salient Linguistic N-Grams:
+                      Top Salient N-Grams (vocabulary match):
                     </span>
                     <div className="flex flex-wrap gap-1.5">
                       {scanResult.ml_analysis.top_contributing_ngrams.map((ngram, i) => (

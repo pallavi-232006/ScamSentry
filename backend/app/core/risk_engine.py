@@ -31,16 +31,65 @@ class RiskEngine:
     @staticmethod
     def determine_threat_classification(score: float, indicators: List[ThreatIndicator]) -> str:
         """
-        Distinguishes confirmed threats from suspicious anomalies or benign traffic.
-        Returns: 'CONFIRMED_THREAT', 'SUSPICIOUS', or 'BENIGN'.
-        """
-        has_critical_indicators = any(ind.severity == "critical" for ind in indicators)
-        has_credential_harvest = any(ind.category in ["Credential Theft", "Impersonation"] and ind.score_impact >= 40 for ind in indicators)
+        Calibrated threat classification that avoids claiming certainty from
+        suspicious indicators alone.
 
-        if score >= 75.0 or (has_critical_indicators and has_credential_harvest):
-            return "CONFIRMED_THREAT"
-        elif score >= 25.0 or len(indicators) > 0:
+        Tiers (in descending order of evidence strength):
+        - CONFIRMED_MALICIOUS: Score ≥ 75 AND at least two independent critical
+          indicators across different categories, OR a verified malicious URL
+          combined with a critical credential/impersonation indicator.
+        - LIKELY_SCAM: Score ≥ 50 with corroborating critical or high-severity
+          indicators from at least two distinct categories.
+        - SUSPICIOUS: Score ≥ 25 or any indicators detected, but insufficient
+          convergence to assert likely fraud.
+        - LOW_RISK: Score > 0 but below 25 with only low-weight indicators.
+        - BENIGN: No indicators and score of 0.
+        """
+        if not indicators and score == 0.0:
+            return "BENIGN"
+
+        num_critical = sum(1 for ind in indicators if ind.severity == "critical")
+        distinct_categories = len(set(ind.category for ind in indicators))
+
+        has_credential_or_impersonation = any(
+            ind.category in [
+                "Credential Theft", "Impersonation", "UPI Fraud",
+                "Bank Impersonation", "Government Impersonation",
+            ]
+            and ind.score_impact >= 40
+            for ind in indicators
+        )
+        has_url_deception = any(
+            ind.category in ["URL Deception", "Link Bait"] for ind in indicators
+        )
+
+        # CONFIRMED_MALICIOUS: strong multi-vector convergence with verified deception signals
+        if (
+            score >= 75.0
+            and num_critical >= 2
+            and distinct_categories >= 2
+        ) or (
+            score >= 75.0
+            and has_credential_or_impersonation
+            and has_url_deception
+        ):
+            return "CONFIRMED_MALICIOUS"
+
+        # LIKELY_SCAM: significant score with meaningful multi-category evidence
+        if score >= 50.0 and (
+            (num_critical >= 1 and distinct_categories >= 2)
+            or (has_credential_or_impersonation and score >= 60.0)
+        ):
+            return "LIKELY_SCAM"
+
+        # SUSPICIOUS: meaningful indicators but not enough for confident assertion
+        if score >= 25.0 or len(indicators) > 0:
             return "SUSPICIOUS"
+
+        # LOW_RISK: some score but very few or minor signals
+        if score > 0.0:
+            return "LOW_RISK"
+
         return "BENIGN"
 
     @classmethod
@@ -234,22 +283,45 @@ class RiskEngine:
             explanations.append("The analyzed content contains standard conversational or transactional vocabulary with zero threat indicators.")
             return explanations
 
+        # Classification meaning explanation
+        classification_meaning = {
+            "CONFIRMED_MALICIOUS": "independently corroborated by multi-vector evidence (credential/impersonation indicators + deceptive URL structure)",
+            "LIKELY_SCAM": "multiple independent threat indicators converge across different attack categories",
+            "SUSPICIOUS": "patterns match known scam tactics but evidence is insufficient to assert confirmed fraud with certainty",
+            "LOW_RISK": "minor signals detected; may be noise or edge-case vocabulary",
+            "BENIGN": "no threat indicators detected",
+        }.get(classification, "assessed based on detected indicators")
+
         explanations.append(
-            f"Assigned a {risk_level} risk level ({final_score}/100) and classified as {classification} based on {len(indicators)} detected threat indicator(s)."
+            "Assigned a %s risk level (%s/100) and classified as %s — %s. %d threat indicator(s) detected."
+            % (risk_level, final_score, classification, classification_meaning, len(indicators))
         )
 
         # Highlight top category contributors
         for cat, sc in sorted(category_scores.items(), key=lambda x: x[1], reverse=True)[:3]:
-            explanations.append(f"Significant risk contribution (+{round(sc, 1)} pts) from '{cat}' tactics.")
+            explanations.append("Risk contribution of +%s pts from '%s' category." % (round(sc, 1), cat))
 
-        if ml_score >= 60.0:
-            explanations.append(f"Local ML model independently flagged text structure as matching known phishing campaigns with {ml_score}% statistical probability.")
+        # ML explanation — clearly separated from overall confidence
+        if ml_score > 0:
+            if ml_score >= 60.0:
+                explanations.append(
+                    "Local ML classifier (TF-IDF + Logistic Regression trained on %s labelled messages) "
+                    "scored this text at %.1f%% scam probability. "
+                    "This is a statistical vocabulary similarity score — not a definitive verdict. "
+                    "It contributes 30%% weight to the final score when heuristic rules also fire."
+                    % ("96", ml_score)
+                )
+            else:
+                explanations.append(
+                    "Local ML classifier scored this text at %.1f%% scam probability — below the 60%% corroboration threshold. "
+                    "ML result not blended into final score." % ml_score
+                )
 
         for url_item in url_analyses:
             if url_item.is_ip_address:
-                explanations.append(f"Deceptive structural hazard: URL targets raw IP address ({url_item.hostname}) rather than a verified domain name.")
+                explanations.append("Deceptive structural hazard: URL targets raw IP address (%s) rather than a verified domain name." % url_item.hostname)
             if url_item.has_brand_lookalike:
-                explanations.append(f"Impersonation risk: Domain or subdomain appears to spoof brand identity on host '{url_item.hostname}'.")
+                explanations.append("Impersonation risk: Domain appears to spoof brand identity on host '%s'." % url_item.hostname)
             if url_item.has_homoglyphs:
                 explanations.append("Visual deception: URL contains non-standard homoglyph characters designed to deceive human eyes.")
 
@@ -267,18 +339,44 @@ class RiskEngine:
         if risk_level in ["CRITICAL", "HIGH"]:
             recommendations.append("Do NOT click any hyperlinks, download attachments, or call phone numbers listed in this message.")
             recommendations.append("Do NOT reply with SMS verification codes, OTPs, debit card PINs, or personal identity details.")
-        
-        if "credential theft" in categories or "otp" in categories:
-            recommendations.append("Remember: Official services (Google, WhatsApp, Chase, PayPal) will NEVER ask you to forward an SMS OTP code.")
 
-        if "impersonation" in categories or "financial institution impersonation" in categories:
-            recommendations.append("If concerned about your account status, independently open your bank or provider's official app or type their known URL directly into your browser.")
+        if "upi fraud" in categories:
+            recommendations.append(
+                "UPI PIN is only required to SEND money — never to receive it. "
+                "No legitimate payment app (PhonePe, Google Pay, Paytm) will ever ask for your PIN via SMS."
+            )
+            recommendations.append(
+                "Scanning a QR code or accepting a Collect Request always debits your account. "
+                "Reject all unsolicited collect requests immediately."
+            )
+
+        if "credential theft" in categories or "otp" in categories:
+            recommendations.append("Official services will NEVER ask you to forward an SMS OTP, verification code, or passcode over any messaging channel.")
+
+        if "bank impersonation" in categories or "impersonation" in categories:
+            recommendations.append(
+                "For genuine KYC or account concerns, open your bank's official app directly or visit a branch. "
+                "Never follow links sent in unsolicited SMS messages."
+            )
+
+        if "government impersonation" in categories:
+            recommendations.append(
+                "Real law enforcement (CBI, Police, Enforcement Directorate) does NOT conduct investigations, "
+                "arrests, or clearances via phone calls, WhatsApp, or video calls. "
+                "If threatened, hang up and call 1930 (National Cyber Crime Helpline)."
+            )
+
+        if "package phishing" in categories:
+            recommendations.append(
+                "India Post and courier companies do NOT collect redelivery fees via SMS links. "
+                "Track packages only at the official carrier website."
+            )
 
         if "fear" in categories or "urgency" in categories:
-            recommendations.append("Disregard artificial time limits: Threat actors manufacture urgency and legal threats to prevent you from consulting others.")
+            recommendations.append("Disregard artificial time limits: Threat actors manufacture urgency to prevent you from consulting others before complying.")
 
         if "fake rewards" in categories or "lottery / prize" in categories or "employment fraud" in categories:
-            recommendations.append("Be skeptical of unsolicited prizes or high-paying remote job offers requiring upfront fees or communication on Telegram.")
+            recommendations.append("Be skeptical of unsolicited prizes or high-paying remote job offers requiring upfront fees or Telegram-only communication.")
 
         if any(u.is_ip_address or u.has_brand_lookalike or u.is_shortener for u in url_analyses):
             recommendations.append("Inspect the address bar domain carefully before entering credentials. Never enter passwords on numeric IP addresses or shortened links.")

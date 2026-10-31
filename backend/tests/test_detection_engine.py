@@ -34,7 +34,7 @@ def test_fake_bank_account_suspension():
     )
     assert eval_result["risk_score"] >= 75.0
     assert eval_result["risk_level"] == "CRITICAL"
-    assert eval_result["classification"] == "CONFIRMED_THREAT"
+    assert eval_result["classification"] in ["CONFIRMED_MALICIOUS", "LIKELY_SCAM"]
     assert any(ind.category in ["Credential Theft", "Impersonation"] for ind in indicators)
 
 
