@@ -1,11 +1,15 @@
+"""
+Indian cybercrime scenario tests.
+All DB-writing functions receive the isolated in-memory `db` fixture from
+conftest.py — zero writes reach the production scamsentry.db file.
+"""
 import pytest
 from app.core.message_scanner import MessageScanner
 from app.core.risk_engine import RiskEngine
 from app.schemas.scan import MessageScanRequest
 from app.api.v1.scan import scan_message
-from app.api.v1.history import get_scan_history, clear_all_history
+from app.api.v1.history import get_scan_history
 from app.api.v1.stats import get_dashboard_stats
-from app.database import SessionLocal
 
 
 # 1. Fake UPI Collect Request
@@ -88,31 +92,26 @@ def test_legitimate_indian_bank_alert():
     assert eval_result["classification"] == "BENIGN"
 
 
-# 9. History Filtering and Clear All Endpoints
-def test_history_filtering_and_stats():
-    db = SessionLocal()
-    try:
-        # Create a test scan
-        req = MessageScanRequest(
-            message="PhonePe Reward: Enter your secret UPI PIN to claim money instantly.",
-            source_type="sms",
-        )
-        res = scan_message(payload=req, db=db)
-        assert res.id is not None
+# 9. History Filtering and Clear All Endpoints (uses isolated in-memory test DB)
+def test_history_filtering_and_stats(db):
+    """Uses isolated in-memory test DB — never writes to production scamsentry.db."""
+    req = MessageScanRequest(
+        message="PhonePe Reward: Enter your secret UPI PIN to claim money instantly.",
+        source_type="sms",
+    )
+    res = scan_message(payload=req, db=db)
+    assert res.id is not None
 
-        # Verify filtering by scan_type
-        filtered_msg = get_scan_history(limit=10, scan_type="message", db=db)
-        assert len(filtered_msg) > 0
-        assert all(r.scan_type == "message" for r in filtered_msg)
+    # Verify filtering by scan_type
+    filtered_msg = get_scan_history(limit=10, scan_type="message", db=db)
+    assert len(filtered_msg) > 0
+    assert all(r.scan_type == "message" for r in filtered_msg)
 
-        # Verify search filter
-        search_res = get_scan_history(limit=10, search="PhonePe", db=db)
-        assert len(search_res) > 0
+    # Verify search filter
+    search_res = get_scan_history(limit=10, search="PhonePe", db=db)
+    assert len(search_res) > 0
 
-        # Verify dashboard stats aggregation
-        stats = get_dashboard_stats(db=db)
-        assert stats.total_scans > 0
-        assert len(stats.activity_over_time) > 0
-    finally:
-        db.close()
-
+    # Verify dashboard stats aggregation
+    stats = get_dashboard_stats(db=db)
+    assert stats.total_scans > 0
+    assert len(stats.activity_over_time) > 0

@@ -6,7 +6,6 @@ from app.core.ml_classifier import MLScamClassifier
 from app.core.risk_engine import RiskEngine
 from app.schemas.scan import MessageScanRequest, UrlScanRequest
 from app.api.v1.scan import scan_message, scan_url
-from app.database import SessionLocal
 
 
 # 1. Genuine Bank Notifications (False Positive Test)
@@ -162,33 +161,30 @@ def test_harmless_urgent_and_free_context():
 
 
 # 16. Full Explainable Threat Report Schema Compliance via API
-def test_explainable_threat_report_api_endpoint():
-    db = SessionLocal()
-    try:
-        req = MessageScanRequest(
-            message="URGENT: Chase Bank alert. Your debit card is locked due to unauthorized charges. Verify immediately at http://chase-security-login.xyz to restore access.",
-            source_type="sms",
-        )
-        res = scan_message(payload=req, db=db)
-        
-        # Verify Module 6 Explainable Threat Report contract
-        assert hasattr(res, "risk_score")
-        assert hasattr(res, "risk_level")
-        assert hasattr(res, "classification")
-        assert hasattr(res, "summary")
-        assert hasattr(res, "detected_indicators")
-        assert hasattr(res, "social_engineering_tactics")
-        assert hasattr(res, "url_analysis")
-        assert hasattr(res, "ml_analysis")
-        assert hasattr(res, "explanations")
-        assert hasattr(res, "recommendations")
-        assert hasattr(res, "limitations")
+def test_explainable_threat_report_api_endpoint(db):
+    """Uses isolated in-memory test DB — never writes to production scamsentry.db."""
+    req = MessageScanRequest(
+        message="URGENT: Chase Bank alert. Your debit card is locked due to unauthorized charges. Verify immediately at http://chase-security-login.xyz to restore access.",
+        source_type="sms",
+    )
+    res = scan_message(payload=req, db=db)
 
-        assert res.risk_level in ["HIGH", "CRITICAL"]
-        assert len(res.detected_indicators) > 0
-        assert len(res.explanations) > 0
-        assert len(res.recommendations) > 0
-        assert len(res.limitations) > 0
-    finally:
-        db.close()
+    # Verify Module 6 Explainable Threat Report contract
+    assert hasattr(res, "risk_score")
+    assert hasattr(res, "risk_level")
+    assert hasattr(res, "classification")
+    assert hasattr(res, "summary")
+    assert hasattr(res, "detected_indicators")
+    assert hasattr(res, "social_engineering_tactics")
+    assert hasattr(res, "url_analysis")
+    assert hasattr(res, "ml_analysis")
+    assert hasattr(res, "explanations")
+    assert hasattr(res, "recommendations")
+    assert hasattr(res, "limitations")
+
+    assert res.risk_level in ["HIGH", "CRITICAL"]
+    assert len(res.detected_indicators) > 0
+    assert len(res.explanations) > 0
+    assert len(res.recommendations) > 0
+    assert len(res.limitations) > 0
 
