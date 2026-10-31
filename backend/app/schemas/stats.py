@@ -19,3 +19,4 @@ class DashboardStats(BaseModel):
     average_risk_score: float
     category_distribution: List[ThreatCategoryCount]
     threat_level_distribution: List[ThreatLevelCount]
+

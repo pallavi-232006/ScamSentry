@@ -26,16 +26,31 @@ def get_scan_detail(scan_id: int, db: Session = Depends(get_db)):
 
     indicators = [ThreatIndicator(**item) for item in record.indicators]
 
+    classification = "BENIGN"
+    if record.risk_score >= 75.0:
+        classification = "CONFIRMED_THREAT"
+    elif record.risk_score >= 25.0 or len(indicators) > 0:
+        classification = "SUSPICIOUS"
+
     return ScanResponse(
         id=record.id,
         scan_type=record.scan_type,
         target_summary=record.target_summary,
+        summary=record.target_summary,
         risk_score=record.risk_score,
+        risk_level=record.threat_level,
         threat_level=record.threat_level,
+        classification=classification,
         category=record.category,
         indicators=indicators,
+        detected_indicators=indicators,
+        social_engineering_tactics=[],
+        url_analysis=[],
+        ml_analysis={},
         suspicious_phrases=record.phrases,
+        explanations=[f"Archived scan record evaluated with {record.threat_level} risk level ({record.risk_score}/100)."],
         recommendations=record.recommendations,
+        limitations=[],
         metadata={"raw_content": record.raw_content},
         created_at=record.created_at,
     )

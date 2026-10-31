@@ -1,0 +1,402 @@
+[
+  {
+    "text": "URGENT: Your Wells Fargo account has been locked due to suspicious login attempts. Verify immediately at http://wellsfargo-security-portal.xyz/verify to restore access.",
+    "label": 1,
+    "category": "bank_impersonation"
+  },
+  {
+    "text": "Chase Alert: Suspicious transaction of $849.20 detected at BestBuy. If you did not make this purchase, confirm your account details immediately: http://chase-fraud-prevent.top/login",
+    "label": 1,
+    "category": "bank_impersonation"
+  },
+  {
+    "text": "Bank of America Notice: Your online access is on hold. Click here to confirm your identity and debit card details: http://boa-account-update.club/auth",
+    "label": 1,
+    "category": "bank_impersonation"
+  },
+  {
+    "text": "Citibank Security: Your mobile banking session was terminated. Please re-enter your username, password and debit card PIN to reactivate your profile: http://citi-reactivation-secure.xyz",
+    "label": 1,
+    "category": "bank_impersonation"
+  },
+  {
+    "text": "PayPal Fraud Alert: We observed unauthorized access from an unrecognized device. Click link to dispute transaction and submit your social security number: http://paypal-dispute-resolution.top",
+    "label": 1,
+    "category": "bank_impersonation"
+  },
+  {
+    "text": "WhatsApp Support: Someone requested a registration code for your number from London. Reply with your 6-digit verification code to keep your account safe.",
+    "label": 1,
+    "category": "otp_harvesting"
+  },
+  {
+    "text": "Hi, I just sent a 6 digit SMS verification code to your mobile by mistake. Can you please forward it back to me right now? It is very urgent!",
+    "label": 1,
+    "category": "otp_harvesting"
+  },
+  {
+    "text": "Google Security Alert: Unauthorized sign-in attempt blocked. To secure your Gmail account, reply with your one-time SMS verification token immediately.",
+    "label": 1,
+    "category": "otp_harvesting"
+  },
+  {
+    "text": "Instagram Support: Your account will be deleted within 24 hours due to copyright violation. Provide your 2FA code and password to cancel deletion: http://ig-copyright-appeal.xyz",
+    "label": 1,
+    "category": "credential_theft"
+  },
+  {
+    "text": "Microsoft Office 365: Your email password expires today. Click here to keep your current password and enter your login credentials: http://office365-pass-recovery.top",
+    "label": 1,
+    "category": "credential_theft"
+  },
+  {
+    "text": "IRS FINAL NOTICE: An arrest warrant has been submitted to your local sheriff department for unpaid federal taxes. Call 1-800-482-0199 immediately to settle or face detention.",
+    "label": 1,
+    "category": "government_impersonation"
+  },
+  {
+    "text": "Social Security Administration: Your SSN has been suspended due to involvement in drug trafficking and money laundering. Call our federal agent now at 888-512-3391 to avoid arrest.",
+    "label": 1,
+    "category": "government_impersonation"
+  },
+  {
+    "text": "Department of Homeland Security: Your customs package contains illegal contraband. Contact immigration officer immediately on Telegram @dhs_clearance to pay customs penalty.",
+    "label": 1,
+    "category": "government_impersonation"
+  },
+  {
+    "text": "State Police Warning: A citation of $450 has been recorded against your vehicle. Pay fine today via Bitcoin or your driver license will be revoked: http://police-traffic-citation.xyz",
+    "label": 1,
+    "category": "government_impersonation"
+  },
+  {
+    "text": "Work From Home Opportunity: Amazon is hiring online product reviewers! Earn $400 - $600 daily working 1-2 hours on your phone. No experience needed. WhatsApp +1-949-555-0129 to start today.",
+    "label": 1,
+    "category": "fake_job"
+  },
+  {
+    "text": "Part-Time Job Offer: Global marketing agency needs remote assistants. Daily pay $350 paid via USDT or direct wire. Contact HR manager on Telegram @remote_career_now.",
+    "label": 1,
+    "category": "fake_job"
+  },
+  {
+    "text": "Congratulations! Your resume was shortlisted for Data Entry Specialist at Google. Hourly salary $85/hr. Pay initial equipment registration fee of $150 via Apple gift card to receive your laptop.",
+    "label": 1,
+    "category": "fake_job"
+  },
+  {
+    "text": "Congratulations! You won £1,500,000 in the 2026 UK Mega Millions International Lottery draw. To claim your prize funds, email your bank details and passport to lottery-agent@claim-payout.xyz",
+    "label": 1,
+    "category": "lottery_prize"
+  },
+  {
+    "text": "Walmart Customer Reward: You have been selected to receive a free $1,000 Walmart Gift Card. Claim your reward before midnight: http://bit.ly/walmart-free-gift-card-claim",
+    "label": 1,
+    "category": "lottery_prize"
+  },
+  {
+    "text": "Exclusive Giveaway: Elon Musk is giving away 5,000 Ethereum! Send 0.5 ETH to the wallet address below and receive 2.0 ETH returned instantly to your wallet. Limited to first 50 participants.",
+    "label": 1,
+    "category": "investment_scam"
+  },
+  {
+    "text": "Guaranteed 400% profit in 48 hours with automated crypto AI arbitrage bot! Deposit minimum $500 Bitcoin. Risk-free passive income. Contact our certified broker on WhatsApp.",
+    "label": 1,
+    "category": "investment_scam"
+  },
+  {
+    "text": "Forex Elite VIP Group: Turn $200 into $5,000 in just 3 days with guaranteed insider signals. 100% win rate guaranteed. DM me on WhatsApp now to join the trading pool.",
+    "label": 1,
+    "category": "investment_scam"
+  },
+  {
+    "text": "USPS Delivery Notice: Your package #US9283018 couldn't be delivered due to incomplete street address and unpaid redelivery surcharge of $2.30. Update address at http://usps-redelivery-portal.club/track",
+    "label": 1,
+    "category": "package_phishing"
+  },
+  {
+    "text": "DHL Express: Your shipment is held at customs. A handling fee of $3.50 is required before dispatch. Confirm payment immediately: http://dhl-express-tracking-fee.top",
+    "label": 1,
+    "category": "package_phishing"
+  },
+  {
+    "text": "Geek Squad Protection: Your annual computer security subscription renewed automatically for $499.99. If you did not authorize this charge, call billing support immediately at 1-888-291-8841 for full refund.",
+    "label": 1,
+    "category": "fake_customer_support"
+  },
+  {
+    "text": "Norton LifeLock: Invoice #NL-9921 for $379.00 has been debited from your checking account. Call our cancellation desk within 2 hours at 1-800-591-4420 to stop wire transfer.",
+    "label": 1,
+    "category": "fake_customer_support"
+  },
+  {
+    "text": "Netflix Renewal Failed: We were unable to charge your payment method for monthly subscription. Update your credit card info within 24 hours to avoid account deactivation: http://netflix-billing-renew.xyz",
+    "label": 1,
+    "category": "credential_theft"
+  },
+  {
+    "text": "Apple ID Security: Your Apple ID has been suspended because it was accessed from an unknown iPhone 15 in Moscow. Verify your Apple ID password and billing address at http://appleid-security-unlock.xyz",
+    "label": 1,
+    "category": "credential_theft"
+  },
+  {
+    "text": "URGENT from Mom: Hi honey, I dropped my phone in water and this is my temporary number. I am at the car repair shop and my card is declined. Please send $450 via Zelle to this mechanic quickly!",
+    "label": 1,
+    "category": "emotional_manipulation"
+  },
+  {
+    "text": "Confidential Business Deal: I am barrister Johnson representing a deceased client with $14.5M in unallocated assets. Keep this matter strictly secret and confidential. Reply with your private bank details to share 40%.",
+    "label": 1,
+    "category": "financial_fraud"
+  },
+  {
+    "text": "ATTENTION: We detected malware and illegal footage on your webcam. To permanently delete the video evidence, transfer 0.05 BTC ($3,000) to our Bitcoin wallet within 24 hours or we send it to all your contacts.",
+    "label": 1,
+    "category": "fear_threat"
+  },
+  {
+    "text": "FedEx Shipping: Parcel delivery failed because recipient was absent. Reschedule delivery date and pay $1.99 redelivery fee at http://fedex-parcel-redirection.xyz/reschedule",
+    "label": 1,
+    "category": "package_phishing"
+  },
+  {
+    "text": "Telegram Job Alert: Earn $50 every 30 minutes by liking YouTube videos and subscribing to channels. Instant payout via CashApp. Click here to chat with our recruitment specialist: http://t.me/quick_cash_tasks",
+    "label": 1,
+    "category": "fake_job"
+  },
+  {
+    "text": "Wells Fargo Alert: A wire transfer of $2,450.00 to crypto exchange Coinbase is pending. If unauthorized, cancel immediately by calling our fraud line 1-800-992-1290 or click http://wellsfargo-wire-cancel.club",
+    "label": 1,
+    "category": "bank_impersonation"
+  },
+  {
+    "text": "Bank Verification Alert: Your debit card was blocked due to multiple failed ATM attempts. Verify your PIN number and CVV online at http://bank-debit-reactivate.top to unlock card.",
+    "label": 1,
+    "category": "credential_theft"
+  },
+  {
+    "text": "URGENT IRS Notice: Final settlement letter regarding tax fraud investigation #TX-90192. Immediate payment of $1,200 via Target gift cards required to dismiss federal felony charges.",
+    "label": 1,
+    "category": "government_impersonation"
+  },
+  {
+    "text": "Amazon Security: Your account is placed on hold due to unusual ordering behavior. Upload your driver license and credit card photos at http://amazon-account-reactivation.xyz to verify identity.",
+    "label": 1,
+    "category": "credential_theft"
+  },
+  {
+    "text": "Exclusive VIP Crypto Presale: Next 1000x gem! Pre-sale closes in 30 minutes. Send SOL directly to wallet address to receive 10,000,000 tokens before Uniswap launch. Do not miss out!",
+    "label": 1,
+    "category": "investment_scam"
+  },
+  {
+    "text": "Your Facebook account will be disabled permanently within 12 hours because of violation of community terms. Verify identity here: http://fb-support-appeal-center.xyz",
+    "label": 1,
+    "category": "credential_theft"
+  },
+  {
+    "text": "Overdue Electricity Bill Notice: Your power service will be disconnected in 45 minutes unless past due balance of $189.50 is paid immediately via GreenDot Moneypak. Call 800-410-9928 now.",
+    "label": 1,
+    "category": "financial_fraud"
+  },
+  {
+    "text": "Chase Bank: Your debit card ending in 4102 was charged $14.20 at Starbucks on 10/31. If this was you, no response is needed. Reply NO if you do not recognize this purchase.",
+    "label": 0,
+    "category": "legitimate_bank_alert"
+  },
+  {
+    "text": "Wells Fargo: Your direct deposit from ACME CORP in the amount of $2,450.00 has been credited to your checking account ending in 8912. Current available balance is $3,120.45.",
+    "label": 0,
+    "category": "legitimate_bank_alert"
+  },
+  {
+    "text": "Bank of America Alert: You scheduled an online bill payment of $85.00 to Verizon Wireless for 11/03. To view or cancel this payment, log in to our official mobile banking app.",
+    "label": 0,
+    "category": "legitimate_bank_alert"
+  },
+  {
+    "text": "Google 2-Step Verification: Your Google verification code is 492019. This code expires in 10 minutes. Remember: Google will never ask you to share this code with anyone.",
+    "label": 0,
+    "category": "legitimate_otp"
+  },
+  {
+    "text": "Your Uber security code is 7821. Never share this code with anyone. Our customer support will never ask for it.",
+    "label": 0,
+    "category": "legitimate_otp"
+  },
+  {
+    "text": "Your Airbnb verification code is 551902. If you did not request this code, you can safely ignore this message.",
+    "label": 0,
+    "category": "legitimate_otp"
+  },
+  {
+    "text": "Hey Sarah, are you still free for lunch today at 12:30? Let me know if that works or if we should meet at the corner cafe instead.",
+    "label": 0,
+    "category": "benign_conversation"
+  },
+  {
+    "text": "Feel free to stop by my desk whenever you have time this afternoon. I have the updated wireframes for the dashboard ready for review.",
+    "label": 0,
+    "category": "benign_conversation"
+  },
+  {
+    "text": "Urgent meeting reminder: Team standup is rescheduled to 4 PM in Conference Room B due to the client demonstration.",
+    "label": 0,
+    "category": "benign_business"
+  },
+  {
+    "text": "Urgent bug fix deployed to staging server. All unit tests and integration tests passed cleanly. Ready for production release.",
+    "label": 0,
+    "category": "benign_business"
+  },
+  {
+    "text": "Hi team, please find attached the weekly sprint burndown chart. We achieved 94% of our story points this sprint. Great job everyone!",
+    "label": 0,
+    "category": "benign_business"
+  },
+  {
+    "text": "Your package from Amazon was delivered to the front porch today at 2:15 PM. Thank you for shopping with us.",
+    "label": 0,
+    "category": "benign_notification"
+  },
+  {
+    "text": "Your appointment with Dr. Williams is confirmed for Tuesday, November 4th at 9:30 AM. Please arrive 15 minutes early to complete paperwork.",
+    "label": 0,
+    "category": "benign_notification"
+  },
+  {
+    "text": "Hi Dad, I will be home around 6:30 PM after my soccer practice. Can you please pick up some pasta and garlic bread from the grocery store?",
+    "label": 0,
+    "category": "benign_conversation"
+  },
+  {
+    "text": "The local library reminds you that 'Clean Architecture' by Robert Martin is due for return in 3 days. You can renew online on the library catalog.",
+    "label": 0,
+    "category": "benign_notification"
+  },
+  {
+    "text": "Happy birthday John! Wishing you an incredible year ahead filled with joy, good health, and exciting adventures. Let us celebrate this weekend!",
+    "label": 0,
+    "category": "benign_conversation"
+  },
+  {
+    "text": "Free admission to the city art museum this Saturday from 10 AM to 5 PM as part of the cultural heritage weekend. Everyone is welcome to visit.",
+    "label": 0,
+    "category": "benign_notification"
+  },
+  {
+    "text": "Can someone please review pull request #142 for the payment gateway service? Need two approvals before merging to main branch.",
+    "label": 0,
+    "category": "benign_business"
+  },
+  {
+    "text": "Good morning! Just checking in to see if you received the notes from yesterday's product roadmap sync. Let me know if you have any feedback.",
+    "label": 0,
+    "category": "benign_business"
+  },
+  {
+    "text": "Your dental cleaning appointment has been scheduled for December 12 at 11:00 AM with Dr. Emily. Call our clinic if you need to reschedule.",
+    "label": 0,
+    "category": "benign_notification"
+  },
+  {
+    "text": "Flight reservation confirmed: Delta flight DL-482 from SFO to JFK departs at 8:15 AM on Friday. Gate assignment will be announced at check-in.",
+    "label": 0,
+    "category": "benign_notification"
+  },
+  {
+    "text": "Your pharmacy prescription for Lisinopril is ready for pickup at CVS Pharmacy #4912 on Main Street. Store hours are 8 AM to 9 PM daily.",
+    "label": 0,
+    "category": "benign_notification"
+  },
+  {
+    "text": "Hey guys, the movie starts at 7:45 PM. I bought tickets for row F seats 8 to 11. See you outside the cinema in 20 minutes!",
+    "label": 0,
+    "category": "benign_conversation"
+  },
+  {
+    "text": "Urgent reminder from HR: Please complete your annual health insurance enrollment forms before Friday's deadline at 5 PM on the company intranet portal.",
+    "label": 0,
+    "category": "benign_business"
+  },
+  {
+    "text": "Free coffee and donuts are in the third floor breakroom today courtesy of the design team. Help yourselves!",
+    "label": 0,
+    "category": "benign_business"
+  },
+  {
+    "text": "Your monthly electric utility statement is available to view. Total amount due: $78.40. Auto-pay scheduled for November 15 from account ending in 1049.",
+    "label": 0,
+    "category": "benign_notification"
+  },
+  {
+    "text": "Reminder: School parent-teacher conferences will take place on Thursday from 4 PM to 7 PM in the high school gymnasium.",
+    "label": 0,
+    "category": "benign_notification"
+  },
+  {
+    "text": "Thanks for attending our webinar on cloud infrastructure security. The video recording and presentation slide deck are now available for download.",
+    "label": 0,
+    "category": "benign_business"
+  },
+  {
+    "text": "Don't forget we have dinner with Grandma on Sunday at 5 PM. Please bring the photo album from the summer vacation trip.",
+    "label": 0,
+    "category": "benign_conversation"
+  },
+  {
+    "text": "Your order #8921-A has been shipped via UPS ground. Track your package on the official store account page under orders history.",
+    "label": 0,
+    "category": "benign_notification"
+  },
+  {
+    "text": "Congratulations to our employee of the month, David from the DevOps team, for outstanding uptime reliability throughout Q3!",
+    "label": 0,
+    "category": "benign_business"
+  },
+  {
+    "text": "Urgent weather advisory: Heavy rain and wind gusts up to 45 mph expected in Northern California this evening. Secure loose outdoor items.",
+    "label": 0,
+    "category": "benign_notification"
+  },
+  {
+    "text": "Hey, do you know what time the grocery store closes tonight? I want to pick up some ice cream and strawberries for dessert.",
+    "label": 0,
+    "category": "benign_conversation"
+  },
+  {
+    "text": "Your car maintenance service at Toyota of Sunnyvale is complete. Your vehicle is washed and ready for pickup at the service desk.",
+    "label": 0,
+    "category": "benign_notification"
+  },
+  {
+    "text": "Apple Store Receipt: Thank you for your in-store purchase of USB-C Charge Cable ($19.00). Total charged to Visa ending in 4019.",
+    "label": 0,
+    "category": "benign_notification"
+  },
+  {
+    "text": "Feel free to let me know if you would like me to bring my projector for the community club meeting tomorrow evening.",
+    "label": 0,
+    "category": "benign_conversation"
+  },
+  {
+    "text": "Hey bro, the soccer game was moved to Field 3 because of maintenance on Field 1. Bring both the red and blue jerseys.",
+    "label": 0,
+    "category": "benign_conversation"
+  },
+  {
+    "text": "Your requested Lyft ride has arrived. Driver John is outside in a silver Honda Civic license plate 8ABC123.",
+    "label": 0,
+    "category": "benign_notification"
+  },
+  {
+    "text": "Reminder from City Water Department: Annual water meter inspection scheduled for your neighborhood next Tuesday between 9 AM and 1 PM.",
+    "label": 0,
+    "category": "benign_notification"
+  },
+  {
+    "text": "Congratulations on passing your AWS Certified Solutions Architect examination! Your digital badge and certificate are available on Credly.",
+    "label": 0,
+    "category": "benign_notification"
+  }
+]

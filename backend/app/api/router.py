@@ -7,3 +7,4 @@ api_router = APIRouter()
 api_router.include_router(scan_router)
 api_router.include_router(history_router)
 api_router.include_router(stats_router)
+

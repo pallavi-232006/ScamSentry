@@ -51,3 +51,4 @@ class ScanRecord(Base):
     @recommendations.setter
     def recommendations(self, val):
         self.recommendations_json = json.dumps(val or [])
+

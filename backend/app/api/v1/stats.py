@@ -56,3 +56,4 @@ def get_dashboard_stats(db: Session = Depends(get_db)):
         category_distribution=category_distribution,
         threat_level_distribution=threat_level_distribution,
     )
+

@@ -1,92 +1,229 @@
 import os
+import json
 import pickle
-from typing import Tuple
+from datetime import datetime, timezone
+from typing import Dict, Any, Optional, Tuple
+
+import numpy as np
 from sklearn.feature_extraction.text import TfidfVectorizer
 from sklearn.linear_model import LogisticRegression
+from sklearn.model_selection import train_test_split
+from sklearn.metrics import (
+    precision_score,
+    recall_score,
+    f1_score,
+    accuracy_score,
+    confusion_matrix,
+)
 
-# Built-in balanced cybersecurity training seed for cold-start
-TRAINING_SAMPLES = [
-    # Scam / Phishing Samples (Label 1)
-    ("URGENT: Your bank account has been suspended due to suspicious activity. Verify immediately at http://secure-bank-login.xyz", 1),
-    ("Congratulations! You have won $1,000,000 in the international lottery. Send your full name, SSN, and banking details to claim.", 1),
-    ("USPS: Your parcel delivery is held at terminal due to unpaid shipping tax of $1.95. Click here to confirm payment: http://usps-tracking-redirection.club", 1),
-    ("Dear customer, Netflix subscription renewal failed. Update your credit card within 24 hours to prevent cancellation.", 1),
-    ("IRS Final Notice: An arrest warrant has been issued in your name for tax evasion. Call 1-800-TAX-FRAUD immediately or face prosecution.", 1),
-    ("WhatsApp security alert: Your 6-digit verification code was requested from another device. Reply with the code to verify your ownership.", 1),
-    ("PayPal Alert: Unauthorized transaction of $649.99 detected. If this was not you, log in immediately at http://paypal-dispute-center.top", 1),
-    ("Security Notice: Unusual sign-in attempt detected. Verify your password and 2FA token to protect your email inbox.", 1),
-    ("You are selected for exclusive Bitcoin investment opportunity! Guaranteed 500% return in 48 hours. Deposit now to wallet.", 1),
-    ("Apple Support: Your iCloud account is locked. Confirm your credentials now to unlock your device.", 1),
-    
-    # Benign / Legitimate Samples (Label 0)
-    ("Hey mom, I will be home around 6 PM for dinner. Do you need me to pick up groceries on the way?", 0),
-    ("Here is the meeting notes document from today's design sprint. Let's review the mockups tomorrow morning at 10 AM.", 0),
-    ("Your appointment with Dr. Smith is confirmed for Thursday at 2:30 PM. Please arrive 15 minutes early.", 0),
-    ("The package was delivered to your front porch. Thank you for shopping with us.", 0),
-    ("Reminder: Team standup in 10 minutes on the main conference line.", 0),
-    ("Happy birthday John! Wishing you a wonderful year ahead filled with happiness and success.", 0),
-    ("Attached is the quarterly financial report for Q3. All metrics met our forecasts.", 0),
-    ("Your library books are due in 3 days. You can renew them online or bring them to the branch.", 0),
-    ("Can you please send me the recipe for that pasta salad you made last weekend?", 0),
-    ("Great job on today's presentation! The client was very impressed with our roadmap.", 0)
+# Canonical dataset and artifact paths
+BASE_DATA_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "data"))
+DATASET_PATH = os.path.join(BASE_DATA_DIR, "dataset.json")
+MODEL_PATH = os.path.join(BASE_DATA_DIR, "model.pkl")
+METRICS_PATH = os.path.join(BASE_DATA_DIR, "model_metrics.json")
+
+DATASET_LIMITATIONS = [
+    "Trained on a curated reference dataset of 80 labeled security scenarios; variance may exist on novel out-of-distribution text.",
+    "Short SMS messages containing exclusively novel slang, obfuscated leetspeak, or emojis may produce low TF-IDF feature overlap.",
+    "Designed strictly as a complementary secondary scoring vector (35% maximum blended weight) alongside deterministic cybersecurity heuristics.",
+    "Does not replace human threat intelligence or live threat feed reputation lookups."
 ]
 
 
 class MLScamClassifier:
     """
-    TF-IDF and Logistic Regression based machine learning detector.
-    Provides statistical classification probability to complement rule-based cybersecurity analysis.
+    Local TF-IDF and Logistic Regression Machine Learning Classifier.
+    Evaluates probabilistic scam patterns locally with zero network or third-party API dependencies.
     """
 
-    def __init__(self, model_path: str = "backend/app/data/model.pkl"):
+    _instance: Optional["MLScamClassifier"] = None
+
+    def __new__(cls, *args, **kwargs):
+        # Singleton pattern to prevent repeated disk loading across router requests
+        if cls._instance is None:
+            cls._instance = super(MLScamClassifier, cls).__new__(cls)
+            cls._instance._initialized = False
+        return cls._instance
+
+    def __init__(
+        self,
+        model_path: str = MODEL_PATH,
+        dataset_path: str = DATASET_PATH,
+        metrics_path: str = METRICS_PATH,
+    ):
+        if self._initialized:
+            return
+
         self.model_path = model_path
-        self.vectorizer: TfidfVectorizer = None
-        self.classifier: LogisticRegression = None
-        self._ensure_model_trained()
+        self.dataset_path = dataset_path
+        self.metrics_path = metrics_path
+        self.vectorizer: Optional[TfidfVectorizer] = None
+        self.classifier: Optional[LogisticRegression] = None
+        self.metrics: Dict[str, Any] = {}
 
-    def _ensure_model_trained(self):
-        try:
-            if os.path.exists(self.model_path):
+        self._load_or_train()
+        self._initialized = True
+
+    def _load_or_train(self):
+        """Loads cached model artifact from disk or executes stratified training."""
+        if os.path.exists(self.model_path) and os.path.exists(self.metrics_path):
+            try:
                 with open(self.model_path, "rb") as f:
-                    data = pickle.load(f)
-                    self.vectorizer = data["vectorizer"]
-                    self.classifier = data["classifier"]
-                return
-        except Exception:
-            pass
+                    artifacts = pickle.load(f)
+                    self.vectorizer = artifacts.get("vectorizer")
+                    self.classifier = artifacts.get("classifier")
 
-        # Train on baseline samples
-        texts = [text for text, _ in TRAINING_SAMPLES]
-        labels = [label for _, label in TRAINING_SAMPLES]
+                with open(self.metrics_path, "r", encoding="utf-8") as f:
+                    self.metrics = json.load(f)
+                return
+            except Exception:
+                # If cached artifacts are corrupt or incompatible, retrain
+                pass
+
+        self.train_and_evaluate()
+
+    def train_and_evaluate(self) -> Dict[str, Any]:
+        """
+        Executes stratified train/test split, fits TF-IDF vectorizer + LogisticRegression,
+        evaluates precision, recall, F1, and confusion matrix, and persists artifacts.
+        """
+        if not os.path.exists(self.dataset_path):
+            raise FileNotFoundError(f"Training dataset not found at {self.dataset_path}")
+
+        with open(self.dataset_path, "r", encoding="utf-8") as f:
+            records = json.load(f)
+
+        texts = [r["text"] for r in records]
+        labels = [int(r["label"]) for r in records]
+
+        # Stratified 75% train / 25% test split
+        X_train_raw, X_test_raw, y_train, y_test = train_test_split(
+            texts,
+            labels,
+            test_size=0.25,
+            stratify=labels,
+            random_state=42,
+        )
 
         self.vectorizer = TfidfVectorizer(
             ngram_range=(1, 2),
-            stop_words="english",
-            max_features=2000,
+            sublinear_tf=True,
+            max_features=1500,
             lowercase=True,
+            strip_accents="unicode",
         )
-        X = self.vectorizer.fit_transform(texts)
-        self.classifier = LogisticRegression(C=1.0, max_iter=200, random_state=42)
-        self.classifier.fit(X, labels)
 
-        # Attempt to save if directory exists
-        try:
-            os.makedirs(os.path.dirname(self.model_path), exist_ok=True)
-            with open(self.model_path, "wb") as f:
-                pickle.dump({"vectorizer": self.vectorizer, "classifier": self.classifier}, f)
-        except Exception:
-            pass
+        X_train = self.vectorizer.fit_transform(X_train_raw)
+        X_test = self.vectorizer.transform(X_test_raw)
+
+        self.classifier = LogisticRegression(
+            C=1.5,
+            max_iter=300,
+            random_state=42,
+            solver="liblinear",
+        )
+        self.classifier.fit(X_train, y_train)
+
+        # Evaluate on holdout test set
+        y_pred = self.classifier.predict(X_test)
+
+        acc = float(accuracy_score(y_test, y_pred))
+        prec = float(precision_score(y_test, y_pred, zero_division=0))
+        rec = float(recall_score(y_test, y_pred, zero_division=0))
+        f1 = float(f1_score(y_test, y_pred, zero_division=0))
+        cm = confusion_matrix(y_test, y_pred).tolist()
+
+        self.metrics = {
+            "model_type": "TF-IDF + Logistic Regression",
+            "accuracy": round(acc, 4),
+            "precision": round(prec, 4),
+            "recall": round(rec, 4),
+            "f1_score": round(f1, 4),
+            "confusion_matrix": cm,  # [[TN, FP], [FN, TP]]
+            "train_samples": len(X_train_raw),
+            "test_samples": len(X_test_raw),
+            "total_dataset_samples": len(records),
+            "trained_at": datetime.now(timezone.utc).isoformat(),
+            "limitations": DATASET_LIMITATIONS,
+        }
+
+        # Persist artifacts to disk
+        os.makedirs(os.path.dirname(self.model_path), exist_ok=True)
+        with open(self.model_path, "wb") as f:
+            pickle.dump({"vectorizer": self.vectorizer, "classifier": self.classifier}, f)
+
+        with open(self.metrics_path, "w", encoding="utf-8") as f:
+            json.dump(self.metrics, f, indent=2)
+
+        return self.metrics
 
     def predict_proba(self, text: str) -> float:
         """
         Returns a probability score between 0.0 and 100.0 indicating scam likelihood.
+        Handles empty, whitespace, and unfamiliar inputs gracefully.
         """
-        if not text or not self.vectorizer or not self.classifier:
+        if not text or not text.strip() or self.vectorizer is None or self.classifier is None:
             return 0.0
 
         try:
-            X_vec = self.vectorizer.transform([text])
-            proba = self.classifier.predict_proba(X_vec)[0][1]
+            vec = self.vectorizer.transform([text.strip()])
+            # Check if input had zero non-zero features in vocabulary
+            if vec.nnz == 0:
+                # Completely unfamiliar tokens -> 0.0 probability, not an assumed scam
+                return 0.0
+
+            proba = self.classifier.predict_proba(vec)[0][1]
             return round(float(proba) * 100.0, 1)
         except Exception:
             return 0.0
+
+    def get_analysis(self, text: str) -> Dict[str, Any]:
+        """
+        Produces detailed ML analysis payload for explainable threat reports.
+        """
+        proba = self.predict_proba(text)
+        
+        # Determine classification label
+        if proba >= 70.0:
+            pred_label = "SCAM_LIKELY"
+        elif proba >= 40.0:
+            pred_label = "SUSPICIOUS_LINGUISTIC_PATTERNS"
+        else:
+            pred_label = "BENIGN_PATTERN"
+
+        # Extract top contributing n-grams if available
+        top_features = []
+        if text and self.vectorizer and self.classifier:
+            try:
+                vec = self.vectorizer.transform([text.strip()])
+                feature_names = self.vectorizer.get_feature_names_out()
+                coefs = self.classifier.coef_[0]
+                
+                # Active non-zero features in this text
+                non_zero_indices = vec.nonzero()[1]
+                contributions = []
+                for idx in non_zero_indices:
+                    weight = coefs[idx] * vec[0, idx]
+                    if weight > 0:
+                        contributions.append((feature_names[idx], round(float(weight), 3)))
+
+                # Sort descending by positive weight (scam indicator)
+                contributions.sort(key=lambda x: x[1], reverse=True)
+                top_features = [f"{term} (+{w})" for term, w in contributions[:5]]
+            except Exception:
+                pass
+
+        return {
+            "model_type": "TF-IDF + Logistic Regression",
+            "scam_probability": proba,
+            "prediction_label": pred_label,
+            "top_contributing_ngrams": top_features,
+            "model_metrics": {
+                "precision": self.metrics.get("precision", 0.0),
+                "recall": self.metrics.get("recall", 0.0),
+                "f1_score": self.metrics.get("f1_score", 0.0),
+                "test_accuracy": self.metrics.get("accuracy", 0.0),
+                "confusion_matrix": self.metrics.get("confusion_matrix", []),
+            },
+            "limitations": DATASET_LIMITATIONS,
+        }

@@ -252,8 +252,9 @@ export default function Dashboard({ onNavigateToScanner, onSelectScan }) {
                     </td>
                     <td className="py-3.5 px-4 font-mono font-semibold">
                       <span className={
-                        scan.risk_score >= 80 ? 'text-rose-400' :
-                        scan.risk_score >= 50 ? 'text-amber-400' : 'text-emerald-400'
+                        scan.risk_score >= 75 ? 'text-rose-400' :
+                        scan.risk_score >= 50 ? 'text-orange-400' :
+                        scan.risk_score >= 25 ? 'text-amber-400' : 'text-emerald-400'
                       }>
                         {scan.risk_score} / 100
                       </span>
@@ -292,3 +293,4 @@ export default function Dashboard({ onNavigateToScanner, onSelectScan }) {
     </div>
   );
 }
+

@@ -109,8 +109,9 @@ export default function ScanHistory({ initialSelectedId, onBack }) {
                     <td className="py-3.5 px-4 text-slate-300">{item.category}</td>
                     <td className="py-3.5 px-4 font-mono font-bold">
                       <span className={
-                        item.risk_score >= 80 ? 'text-rose-400' :
-                        item.risk_score >= 50 ? 'text-amber-400' : 'text-emerald-400'
+                        item.risk_score >= 75 ? 'text-rose-400' :
+                        item.risk_score >= 50 ? 'text-orange-400' :
+                        item.risk_score >= 25 ? 'text-amber-400' : 'text-emerald-400'
                       }>
                         {item.risk_score}
                       </span>
@@ -244,3 +245,4 @@ export default function ScanHistory({ initialSelectedId, onBack }) {
     </div>
   );
 }
+

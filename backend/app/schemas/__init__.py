@@ -3,6 +3,8 @@ from app.schemas.scan import (
     UrlScanRequest,
     ScanResponse,
     ThreatIndicator,
+    SocialEngineeringTactic,
+    UrlAnalysisItem,
     ScanRecordSummary,
 )
 from app.schemas.stats import DashboardStats
@@ -12,6 +14,8 @@ __all__ = [
     "UrlScanRequest",
     "ScanResponse",
     "ThreatIndicator",
+    "SocialEngineeringTactic",
+    "UrlAnalysisItem",
     "ScanRecordSummary",
     "DashboardStats",
 ]

@@ -73,3 +73,4 @@ export default function Sidebar({ currentView, onSelectView }) {
     </aside>
   );
 }
+
